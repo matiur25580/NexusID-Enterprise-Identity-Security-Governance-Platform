@@ -24,7 +24,7 @@ async function persist(request:Request,id:string,connector:{id:string;organizati
  if(!old)return scimError(404,"SCIM Group not found.");
  const removed=old.members.map(m=>m.identityId).filter(v=>!next.members.includes(v));
  const group=await withTenantContext(connector.organizationId, async tx=>{
-  const updated=await tx.scimGroup.update({where:{id},data:{displayName:next.displayName,members:{deleteMany:{},create:next.members.map(identityId=>({identityId}))},updatedAt:new Date()},include:{members:{select:{identityId:true}}}});
+  const updated=await tx.scimGroup.update({where:{id,organizationId:connector.organizationId,connectorId:connector.id},data:{displayName:next.displayName,members:{deleteMany:{},create:next.members.map(identityId=>({identityId}))},updatedAt:new Date()},include:{members:{select:{identityId:true}}}});
   await tx.auditEvent.create({data:{organizationId:connector.organizationId,actorUserId:connector.createdById,action:"scim.group.updated",targetType:"scim_group",targetId:id,outcome:"SUCCESS",metadata:{connectorId:connector.id,memberCount:next.members.length,removedMemberCount:removed.length}}});
   return updated;
  });
@@ -47,7 +47,7 @@ export async function PATCH(request:Request,{params}:Context){
 export async function DELETE(request:Request,{params}:Context){
  const {id}=await params,r=await load(request,id);if("error"in r)return r.error;
  await withTenantContext(r.connector.organizationId, async tx=>{
-  await tx.scimGroup.delete({where:{id}});
+  await tx.scimGroup.delete({where:{id,organizationId:r.connector.organizationId,connectorId:r.connector.id}});
   await tx.auditEvent.create({data:{organizationId:r.connector.organizationId,actorUserId:r.connector.createdById,action:"scim.group.deleted",targetType:"scim_group",targetId:id,outcome:"SUCCESS",reason:"SCIM group deleted. Existing access requests and grants are not automatically revoked."}});
  });
  return new NextResponse(null,{status:204});

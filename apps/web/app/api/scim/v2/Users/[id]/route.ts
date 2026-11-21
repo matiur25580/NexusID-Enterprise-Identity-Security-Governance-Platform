@@ -18,7 +18,7 @@ async function persist(request:Request,id:string,connectorId:string,organization
  const current=await withTenantContext(organizationId, tx=>tx.identity.findFirst({where:{id,organizationId,source:"SCIM:"+connectorId}}));if(!current)return scimError(404,"SCIM User not found.");
  try{
   const identity=await withTenantContext(organizationId, async tx=>{
-   const updated=await tx.identity.update({where:{id},data:{userName:next.userName,externalId:next.externalId,displayName:next.displayName,email:next.email,status:next.active?"ACTIVE":"DISABLED",source:"SCIM:"+connectorId}});
+   const updated=await tx.identity.update({where:{id,organizationId,source:"SCIM:"+connectorId},data:{userName:next.userName,externalId:next.externalId,displayName:next.displayName,email:next.email,status:next.active?"ACTIVE":"DISABLED"}});
    let revokedCount=0;
    if(!next.active){const revoked=await tx.accessGrant.updateMany({where:{organizationId,identityId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date()}});revokedCount=revoked.count;}
    await tx.auditEvent.create({data:{organizationId,action:"scim.user.updated",targetType:"identity",targetId:id,outcome:"SUCCESS",reason:next.active?"Identity attributes synchronized through SCIM.":"SCIM deactivation disabled identity and revoked active grants.",metadata:{connectorId,userName:next.userName,active:next.active,grantsRevoked:revokedCount}}});
@@ -44,7 +44,7 @@ export async function PATCH(request:Request,{params}:Context){
 export async function DELETE(request:Request,{params}:Context){
  const {id}=await params;const result=await load(request,id);if("error"in result)return result.error;
  await withTenantContext(result.connector.organizationId, async tx=>{
-  await tx.identity.update({where:{id},data:{status:"DISABLED",source:"SCIM:"+result.connector.id}});
+  await tx.identity.update({where:{id,organizationId:result.connector.organizationId,source:"SCIM:"+result.connector.id},data:{status:"DISABLED"}});
   const revoked=await tx.accessGrant.updateMany({where:{organizationId:result.connector.organizationId,identityId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date()}});
   await tx.auditEvent.create({data:{organizationId:result.connector.organizationId,action:"scim.user.deactivated",targetType:"identity",targetId:id,outcome:"SUCCESS",reason:"SCIM DELETE deactivated the identity and revoked active grants.",metadata:{connectorId:result.connector.id,grantsRevoked:revoked.count}}});
  });
