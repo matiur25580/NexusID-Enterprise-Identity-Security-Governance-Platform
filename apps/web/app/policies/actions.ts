@@ -82,7 +82,7 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
       const updated = await tx.policyRule.update({ where: { id: existing.id }, data: {
         key: data.key.toUpperCase(), name: data.name, description: data.description || null,
         effect: data.effect, field: data.field, operator: data.operator, value: data.value,
-        priority: data.priority, version: { increment: 1 }, lastSimulatedAt: null,
+        priority: data.priority, version: { increment: 1 }, lastSimulatedAt: null, validatedVersion: null,
       } });
       await tx.policyRuleVersion.create({ data: {
         policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
@@ -111,11 +111,11 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
   const rule = await prisma.policyRule.findFirst({ where: { id: parsed.data.ruleId, organizationId: actor.organizationId } });
   if (!rule) throw new Error("Policy rule not found.");
   const enabled = parsed.data.enabled === "true";
-  if (enabled && (!rule.lastSimulatedAt || rule.lastSimulatedAt < rule.updatedAt)) {
+  if (enabled && rule.validatedVersion !== rule.version) {
     throw new Error("Run a policy simulation after the latest edit before enabling this rule.");
   }
   await prisma.$transaction(async (tx) => {
-    const updated = await tx.policyRule.update({ where: { id: rule.id }, data: { enabled, version: { increment: 1 } } });
+    const updated = await tx.policyRule.update({ where: { id: rule.id }, data: { enabled, version: { increment: 1 }, validatedVersion: null } });
     await tx.policyRuleVersion.create({ data: {
       policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
       changeNote: enabled ? "Enabled after simulation" : "Disabled by policy manager", changedById: actor.userId,
@@ -159,7 +159,10 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
     hasActiveGrant: Boolean(activeGrant), hasPendingRequest: Boolean(pendingRequest),
   }, candidates);
   await prisma.$transaction(async (tx) => {
-    await tx.policyRule.updateMany({ where: { organizationId: membership.organizationId }, data: { lastSimulatedAt: new Date() } });
+    const simulatedAt = new Date();
+    for (const rule of policyRecords) {
+      await tx.policyRule.update({ where: { id: rule.id }, data: { lastSimulatedAt: simulatedAt, validatedVersion: rule.version } });
+    }
     await tx.auditEvent.create({ data: {
       organizationId: membership.organizationId, actorUserId: session.user.id, action: "policy.simulated",
       targetType: "policy_evaluation", outcome: result.outcome === "DENY" ? "DENIED" : "SUCCESS",
