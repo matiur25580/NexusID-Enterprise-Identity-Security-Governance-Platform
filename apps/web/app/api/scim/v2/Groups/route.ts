@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { authenticateScim,scimError } from "@/lib/scim";
 import { normalizeScimGroup } from "@/lib/scim-groups-core.mjs";
 import { syncGroupAccessRequests } from "@/lib/scim-group-sync";
@@ -19,7 +19,7 @@ export async function POST(request:Request){
  const identities=await prisma.identity.findMany({where:{id:{in:input.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}});
  if(identities.length!==input.members.length)return scimError(400,"Every group member must be a User provisioned by this connector.");
  try{
-  const group=await prisma.$transaction(async tx=>{
+  const group=await withTenantContext(connector.organizationId, async tx=>{
    const created=await tx.scimGroup.create({data:{organizationId:connector.organizationId,connectorId:connector.id,externalId:input.externalId,displayName:input.displayName,members:{create:input.members.map(identityId=>({identityId}))}}});
    await tx.auditEvent.create({data:{organizationId:connector.organizationId,actorUserId:connector.createdById,action:"scim.group.created",targetType:"scim_group",targetId:created.id,outcome:"SUCCESS",metadata:{connectorId:connector.id,externalId:created.externalId,memberCount:input.members.length}}});
    return created;
