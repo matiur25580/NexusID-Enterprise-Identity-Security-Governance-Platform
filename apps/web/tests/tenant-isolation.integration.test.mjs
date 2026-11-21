@@ -39,6 +39,8 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     const entitlementB = await prisma.entitlement.create({
       data: { organizationId: orgB.id, applicationId: applicationB.id, key: "reader", name: "Tenant B reader" },
     });
+    await prisma.auditEvent.create({ data: { organizationId: orgA.id, action: "tenant-a.rls-fixture", targetType: "integration", outcome: "SUCCESS" } });
+    await prisma.auditEvent.create({ data: { organizationId: orgB.id, action: "tenant-b.rls-fixture", targetType: "integration", outcome: "SUCCESS" } });
 
     await assert.rejects(
       prisma.entitlement.create({
@@ -69,11 +71,12 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     try {
       await prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(`CREATE ROLE "${rlsRole}" NOLOGIN NOSUPERUSER NOBYPASSRLS`);
-        for (const table of ["Identity", "Application", "Entitlement"]) {
+        for (const table of ["Identity", "Application", "Entitlement", "AuditEvent"]) {
           await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
           await tx.$executeRawUnsafe(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
           await tx.$executeRawUnsafe(`GRANT SELECT ON "${table}" TO "${rlsRole}"`);
         }
+        await tx.$executeRawUnsafe(`GRANT INSERT ON "AuditEvent" TO "${rlsRole}"`);
         await tx.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public, app TO "${rlsRole}"`);
         await tx.$executeRawUnsafe(`GRANT EXECUTE ON FUNCTION app.current_organization_id() TO "${rlsRole}"`);
         await tx.$executeRawUnsafe(`SET LOCAL ROLE "${rlsRole}"`);
@@ -83,9 +86,27 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
         assert.deepEqual((await tx.identity.findMany({ orderBy: { id: "asc" } })).map((item) => item.id), [identityA.id]);
         assert.deepEqual((await tx.application.findMany()).map((item) => item.id), [applicationA.id]);
         assert.deepEqual((await tx.entitlement.findMany()).map((item) => item.id), [entitlementA.id]);
+        assert.deepEqual((await tx.auditEvent.findMany({ select: { organizationId: true } })).map((item) => item.organizationId), [orgA.id]);
+        await tx.auditEvent.create({ data: { organizationId: orgA.id, action: "tenant-a.rls-insert", targetType: "integration", outcome: "SUCCESS" } });
+        // A PostgreSQL statement error aborts the current transaction. Isolate
+        // the expected RLS rejection behind a savepoint so the rest of this
+        // interactive transaction can continue and verify tenant B's view.
+        await tx.$executeRawUnsafe("SAVEPOINT before_cross_tenant_audit_insert");
+        let crossTenantInsertRejected = false;
+        try {
+          await tx.auditEvent.create({ data: { organizationId: orgB.id, action: "tenant-b.rls-insert-denied", targetType: "integration", outcome: "SUCCESS" } });
+        } catch {
+          crossTenantInsertRejected = true;
+        } finally {
+          await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT before_cross_tenant_audit_insert");
+          await tx.$executeRawUnsafe("RELEASE SAVEPOINT before_cross_tenant_audit_insert");
+        }
+        assert.equal(crossTenantInsertRejected, true, "RLS must reject an audit write for another tenant.");
+        assert.equal(await tx.auditEvent.count(), 2, "Tenant A can read only its own audit events.");
         await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${orgB.id}, true)`;
         assert.deepEqual((await tx.identity.findMany()).map((item) => item.id), [identityB.id]);
         assert.deepEqual((await tx.application.findMany()).map((item) => item.id), [applicationB.id]);
+        assert.equal(await tx.auditEvent.count(), 1, "Tenant B can read only its own audit events.");
         throw rollbackRls;
       });
     } catch (error) {
@@ -105,8 +126,8 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     assert.equal(hasOrganizationRole(null, ["OWNER"]), false);
 
     await prisma.auditEvent.create({ data: { organizationId: orgA.id, actorUserId: userA.id, action: "integration.test", targetType: "identity", targetId: identityA.id, outcome: "SUCCESS" } });
-    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgA.id } }), 1);
-    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 0);
+    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgA.id } }), 2);
+    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 1);
   } finally {
     if (createdOrgIds.length) await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
     if (createdUserIds.length) await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });

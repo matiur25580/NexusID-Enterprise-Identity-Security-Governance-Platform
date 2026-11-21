@@ -13,6 +13,16 @@ A reusable `withTenantContext(organizationId, work)` helper now opens a Prisma i
 This remains a partial rollout, not complete application coverage. Several tenant-scoped read queries in these flows still rely on explicit organization filters rather than a transaction-local RLS context. Other page loaders, route handlers, scheduled/background jobs, and all remaining Prisma access paths still require conversion and tests before RLS can be activated. SCIM endpoints also need adversarial authenticated integration coverage under a restricted runtime role. Do not enable RLS on a shared or production database based only on this helper's presence.
 
 
+## Workspace creation bootstrap
+
+The onboarding flow creates the Organization row before a tenant ID exists, then sets
+`app.current_organization_id` transaction-locally from that newly created server-side
+organization ID before writing the initial Membership and tenant-owned AuditEvent.
+Organization and Membership remain outside tenant RLS; the AuditEvent write therefore
+runs with the same transaction-local context required by the protected tenant tables.
+The CI RLS integration test exercises AuditEvent reads and writes under a restricted
+`NOBYPASSRLS` role, including rejection of a cross-tenant audit insert.
+
 ## SCIM token lookup exception
 
 SCIM bearer authentication must identify the tenant before a tenant transaction can be established. The current implementation performs a narrow token-hash lookup on `ScimConnector` to resolve only the connector ID and organization ID, then re-reads and validates the enabled connector and updates `lastUsedAt` inside `withTenantContext`. This initial token-hash lookup is a deliberate bootstrap exception to tenant-context coverage. It is **not compatible with activating RLS on `ScimConnector` as-is**: before activation, move token-hash resolution to a dedicated global authentication registry excluded from tenant RLS, or a carefully reviewed least-privilege `SECURITY DEFINER` lookup function with fixed `search_path` and tightly constrained output. Never expose connector metadata from the bootstrap lookup.
@@ -34,7 +44,7 @@ CI applies the policy-definition migration after creating the disposable Postgre
 2. Tenant A context sees only Tenant A identities, applications and entitlements.
 3. Switching the transaction-local context to Tenant B exposes only Tenant B rows.
 
-The test creates a temporary `NOLOGIN NOSUPERUSER NOBYPASSRLS` role, grants only the required read permissions, and uses `SET LOCAL ROLE` so the checks run under a role that cannot bypass RLS. It deliberately throws a sentinel error after assertions so PostgreSQL rolls back the role, grants and DDL, leaving the CI database's RLS activation state unchanged. This tests the real PostgreSQL policies while keeping the current application behavior unchanged.
+The test creates a temporary `NOLOGIN NOSUPERUSER NOBYPASSRLS` role, grants the required read permissions plus narrowly scoped `INSERT` on `AuditEvent`, and uses `SET LOCAL ROLE` so the checks run under a role that cannot bypass RLS. It deliberately throws a sentinel error after assertions so PostgreSQL rolls back the role, grants and DDL, leaving the CI database's RLS activation state unchanged. This tests the real PostgreSQL policies while keeping the current application behavior unchanged.
 
 ## Required runtime rollout before activation
 
