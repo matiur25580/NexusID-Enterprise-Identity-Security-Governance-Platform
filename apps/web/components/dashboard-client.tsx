@@ -112,7 +112,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
               <div className="panel-heading"><div><h2>Governance posture</h2><p>Policy and access health</p></div><button className="more-button" aria-label="More options"><MoreHorizontal size={19} /></button></div>
               <div className="score-wrap"><div className="score-ring"><div><strong>96.8</strong><span>/ 100</span></div></div><div className="score-copy"><strong>Strong posture</strong><span>+2.4% from last month</span><small>Based on 8 governance controls</small></div></div>
               <div className="control-list"><div><span><CheckCircle2 size={15} /> MFA enforcement</span><strong>100%</strong></div><div><span><CheckCircle2 size={15} /> Least privilege</span><strong>94%</strong></div><div><span><CheckCircle2 size={15} /> Access reviews</span><strong>91%</strong></div></div>
-              <div className="panel-footnote"><ShieldCheck size={14} /> Sample score; policy engine not yet connected.</div>
+              <div className="panel-footnote"><ShieldCheck size={14} /> Illustrative posture score; baseline policy engine available.</div>
             </section>
           </div>
 
