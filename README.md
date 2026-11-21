@@ -86,7 +86,6 @@ docs/
 - [ ] Lifecycle workflows and connector framework
 - [x] Baseline policy evaluation, simulation and audit evidence
 - [x] Configurable tenant policy rules, simulation gates and version history
-- [x] Configurable tenant policy rules, simulation gates and version history
 - [ ] Integration, security and end-to-end test suites
 
 ## Policy and governance documentation
