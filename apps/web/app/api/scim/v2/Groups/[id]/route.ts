@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { authenticateScim,scimError } from "@/lib/scim";
 import { applyScimGroupPatch,normalizeScimGroup } from "@/lib/scim-groups-core.mjs";
 import { syncGroupAccessRequests } from "@/lib/scim-group-sync";
@@ -21,7 +21,7 @@ async function persist(request:Request,id:string,connector:{id:string;organizati
  const old=await prisma.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{select:{identityId:true}}}});
  if(!old)return scimError(404,"SCIM Group not found.");
  const removed=old.members.map(m=>m.identityId).filter(v=>!next.members.includes(v));
- const group=await prisma.$transaction(async tx=>{
+ const group=await withTenantContext(connector.organizationId, async tx=>{
   const updated=await tx.scimGroup.update({where:{id},data:{displayName:next.displayName,members:{deleteMany:{},create:next.members.map(identityId=>({identityId}))},updatedAt:new Date()},include:{members:{select:{identityId:true}}}});
   await tx.auditEvent.create({data:{organizationId:connector.organizationId,actorUserId:connector.createdById,action:"scim.group.updated",targetType:"scim_group",targetId:id,outcome:"SUCCESS",metadata:{connectorId:connector.id,memberCount:next.members.length,removedMemberCount:removed.length}}});
   return updated;
@@ -44,7 +44,7 @@ export async function PATCH(request:Request,{params}:Context){
 }
 export async function DELETE(request:Request,{params}:Context){
  const {id}=await params,r=await load(request,id);if("error"in r)return r.error;
- await prisma.$transaction(async tx=>{
+ await withTenantContext(connector.organizationId, async tx=>{
   await tx.scimGroup.delete({where:{id}});
   await tx.auditEvent.create({data:{organizationId:r.connector.organizationId,actorUserId:r.connector.createdById,action:"scim.group.deleted",targetType:"scim_group",targetId:id,outcome:"SUCCESS",reason:"SCIM group deleted. Existing access requests and grants are not automatically revoked."}});
  });
