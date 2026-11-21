@@ -56,73 +56,73 @@ The following 12 single-column visuals are **designed product-interface concepts
 
 A high-level operational landing page for posture indicators, governance workload and recent activity. KPI values and activity feed are illustrative demo data, not live organization telemetry.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-01-command-center.svg" alt="NexusID command center concept" width="100%"></p>
+![NexusID command center concept](./docs/images/dashboard-01-command-center.svg)
 
 ### 02 · Identity directory — implemented
 
 Tenant-scoped inventory for human, service, workload and AI-agent identities, with status governance and explainable risk factors. Current directory query is capped at 250 recently updated records.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-02-identity-directory.svg" alt="NexusID identity directory concept" width="100%"></p>
+![NexusID identity directory concept](./docs/images/dashboard-02-identity-directory.svg)
 
 ### 03 · Identity risk intelligence — implemented
 
 Deterministic risk scoring exposes named signals and weights. Daily snapshots provide historical average scores and elevated-risk counts after data capture begins.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-03-risk-intelligence.svg" alt="NexusID risk intelligence concept" width="100%"></p>
+![NexusID risk intelligence concept](./docs/images/dashboard-03-risk-intelligence.svg)
 
 ### 04 · Risk escalation center — implemented backend and directory panel
 
 Scheduled assessments can flag entry into critical risk (75+) or a score increase of at least 15 points. Alerts are persisted and displayed; external notification delivery is not implemented.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-04-risk-alerts.svg" alt="NexusID risk alert concept" width="100%"></p>
+![NexusID risk alert concept](./docs/images/dashboard-04-risk-alerts.svg)
 
 ### 05 · Access governance — implemented
 
 Application entitlements, access requests, human approval decisions and active/revoked grants are managed inside the organization scope. Policy is re-evaluated before approval.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-05-access-governance.svg" alt="NexusID access governance concept" width="100%"></p>
+![NexusID access governance concept](./docs/images/dashboard-05-access-governance.svg)
 
 ### 06 · Access certification — implemented
 
 Campaigns snapshot active grants for review. Reviewers certify or revoke each item with a rationale. Reviewer assignment, reminders and escalation remain future work.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-06-certifications.svg" alt="NexusID certification concept" width="100%"></p>
+![NexusID certification concept](./docs/images/dashboard-06-certifications.svg)
 
 ### 07 · Policy studio — implemented
 
 Immutable baseline controls and configurable tenant policies support simulation, priority and version history. An ALLOW result never bypasses human approval.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-07-policy-studio.svg" alt="NexusID policy studio concept" width="100%"></p>
+![NexusID policy studio concept](./docs/images/dashboard-07-policy-studio.svg)
 
 ### 08 · Audit and evidence explorer — roadmap concept
 
 A future searchable event workspace for actor, subject, action, outcome, reason and correlation evidence. Audit events exist in current workflows; a dedicated explorer/export interface does not yet exist.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-08-audit-evidence.svg" alt="NexusID audit explorer concept" width="100%"></p>
+![NexusID audit explorer concept](./docs/images/dashboard-08-audit-evidence.svg)
 
 ### 09 · Privileged access workspace — roadmap concept
 
 A future just-in-time privileged-access experience with approvals, expiry, session context and revocation evidence. Privileged entitlement metadata currently informs governance and risk scoring; there is no PAM session broker.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-09-privileged-access.svg" alt="NexusID privileged access concept" width="100%"></p>
+![NexusID privileged access concept](./docs/images/dashboard-09-privileged-access.svg)
 
 ### 10 · Identity lifecycle orchestration — roadmap concept
 
 A future joiner/mover/leaver workflow with approvals, idempotent provisioning jobs, retries and reconciliation. External account provisioning is not currently available.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-10-lifecycle.svg" alt="NexusID lifecycle concept" width="100%"></p>
+![NexusID lifecycle concept](./docs/images/dashboard-10-lifecycle.svg)
 
 ### 11 · Integrations and connector health — roadmap concept
 
 A future connector control plane for OIDC, SAML, SCIM and cloud identity sources, including sync health and credential rotation. Current Google/GitHub OAuth is for application sign-in, not directory provisioning.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-11-integrations.svg" alt="NexusID integrations concept" width="100%"></p>
+![NexusID integrations concept](./docs/images/dashboard-11-integrations.svg)
 
 ### 12 · AI and workload identity governance — roadmap concept
 
 A future governance surface for AI agents, service principals and workloads, including ownership, purpose, credential posture and least-privilege review. The directory supports these identity types; automated discovery and runtime controls do not yet exist.
 
-<p align="center"><img src="https://raw.githubusercontent.com/matiur25580/NexusID-Enterprise-Identity-Security-Governance-Platform/main/docs/images/dashboard-12-ai-workload.svg" alt="NexusID AI/workload governance concept" width="100%"></p>
+![NexusID AI/workload governance concept](./docs/images/dashboard-12-ai-workload.svg)
 
 ## Implemented capabilities
 
