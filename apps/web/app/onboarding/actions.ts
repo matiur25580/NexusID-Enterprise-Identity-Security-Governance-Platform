@@ -35,6 +35,11 @@ export async function createOrganization(
       data: { name, slug },
     });
 
+    // Organization creation bootstraps the tenant ID. Establish transaction-local
+    // context immediately afterward so tenant-owned writes (including audit) are
+    // safe when PostgreSQL RLS is activated.
+    await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${organization.id}, true)`;
+
     await tx.membership.create({
       data: {
         organizationId: organization.id,
