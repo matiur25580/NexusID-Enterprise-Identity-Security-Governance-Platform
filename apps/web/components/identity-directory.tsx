@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ArrowLeft, ChevronDown, CircleAlert, Fingerprint, Plus, Search, ShieldAlert, ShieldCheck, Users } from "lucide-react";
-import { createIdentity, updateIdentityStatus, type IdentityActionState } from "@/app/identities/actions";
+import { captureIdentityRiskSnapshots, createIdentity, updateIdentityStatus, type IdentityActionState } from "@/app/identities/actions";
 
 type Identity = {
   id: string;
@@ -50,10 +50,14 @@ function CreateIdentityForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function IdentityDirectory({ organizationName, role, initialIdentities }: {
+type RiskHistoryPoint = { date: string; count: number; averageScore: number; elevated: number; total: number };
+
+export default function IdentityDirectory({ organizationName, role, initialIdentities, riskHistory, canCaptureRiskSnapshot }: {
   organizationName: string;
   role: string;
   initialIdentities: Identity[];
+  riskHistory: RiskHistoryPoint[];
+  canCaptureRiskSnapshot: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -95,6 +99,11 @@ export default function IdentityDirectory({ organizationName, role, initialIdent
           <article><span className="directory-stat-icon attention"><CircleAlert size={17} /></span><div><small>Needs attention</small><strong>{counts.attention.toLocaleString()}</strong></div></article>
           <article><span className="directory-stat-icon attention"><ShieldAlert size={17} /></span><div><small>Elevated risk (50+)</small><strong>{counts.elevatedRisk.toLocaleString()}</strong></div></article>
         </div>
+
+        <section className="directory-panel risk-history-panel">
+          <div className="directory-panel-heading"><div><h2>Identity risk trends</h2><p>Daily point-in-time snapshots · last 30 days · one snapshot per identity per UTC day</p></div>{canCaptureRiskSnapshot && <form action={captureIdentityRiskSnapshots}><button type="submit" className="primary-button">Capture daily snapshot</button></form>}</div>
+          {riskHistory.length ? <div className="risk-history-table"><table className="directory-table"><thead><tr><th>Snapshot date</th><th>Identities captured</th><th>Average score</th><th>Elevated risk (50+)</th></tr></thead><tbody>{riskHistory.slice(-14).reverse().map((point) => <tr key={point.date}><td>{new Date(point.date + "T00:00:00Z").toLocaleDateString()}</td><td>{point.count}</td><td><strong>{point.averageScore}</strong> / 100</td><td>{point.elevated}</td></tr>)}</tbody></table></div> : <div className="directory-empty">No risk history yet. An authorized workspace operator can capture the first daily snapshot.</div>}
+        </section>
 
         {showCreate && <section className="directory-panel"><div className="directory-panel-heading"><div><h2>Add an identity</h2><p>New records start in Pending status until reviewed.</p></div><button className="directory-close" onClick={() => setShowCreate(false)} aria-label="Close">×</button></div><CreateIdentityForm onClose={() => setShowCreate(false)} /></section>}
 

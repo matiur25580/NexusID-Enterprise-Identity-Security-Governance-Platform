@@ -1,4 +1,6 @@
 import { MembershipRole } from "@prisma/client";
+import { hasOrganizationRole } from "@/lib/role-policy";
+export { hasOrganizationRole } from "@/lib/role-policy";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 

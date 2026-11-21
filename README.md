@@ -90,7 +90,7 @@ docs/
 
 ## Quality checks
 
-Run the deterministic policy regression suite with `pnpm test:policy`. It covers baseline precedence, custom rule matching/order, invalid persisted rule data, exact-version activation gating, approval blocking semantics and tenant-scope query construction.
+Run `pnpm test:policy` for deterministic policy regressions. Run `NEXUSID_INTEGRATION_TEST=1 pnpm test:integration` against a dedicated PostgreSQL database named `nexusid` for persisted tenant isolation and membership-role checks. See [security integration testing and risk trends](docs/SECURITY_TESTING_AND_RISK_TRENDS.md).
 
 ## Policy and governance documentation
 

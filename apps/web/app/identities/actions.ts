@@ -6,6 +6,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
+import { calculateIdentityRisk } from "@/lib/identity-risk";
+import { Prisma } from "@prisma/client";
 
 const createIdentitySchema = z.object({
   displayName: z.string().trim().min(2).max(120),
@@ -124,5 +126,39 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
     });
   });
 
+  revalidatePath("/identities");
+}
+
+export async function captureIdentityRiskSnapshots(): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Authentication required.");
+  const membership = await prisma.membership.findFirst({
+    where: { userId: session.user.id }, orderBy: { createdAt: "asc" }, select: { organizationId: true },
+  });
+  if (!membership) throw new Error("No organization workspace was found.");
+  await requireOrganizationRole(membership.organizationId, writeRoles);
+  const identities = await prisma.identity.findMany({
+    where: { organizationId: membership.organizationId },
+    select: { id: true, status: true, type: true, lastSeenAt: true,
+      accessGrants: { where: { organizationId: membership.organizationId, status: "ACTIVE" },
+        select: { entitlement: { select: { riskLevel: true, privileged: true } } } } },
+  });
+  const now = new Date();
+  const capturedOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const snapshots = identities.map((identity) => {
+    const risk = calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt,
+      activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, now);
+    return { organizationId: membership.organizationId, identityId: identity.id, score: risk.score,
+      level: risk.level, factors: risk.factors as Prisma.InputJsonArray, methodology: risk.methodology, capturedOn };
+  });
+  await prisma.$transaction(async (tx) => {
+    if (snapshots.length) await tx.identityRiskSnapshot.createMany({ data: snapshots, skipDuplicates: true });
+    await tx.auditEvent.create({ data: {
+      organizationId: membership.organizationId, actorUserId: session.user.id,
+      action: "identity.risk_snapshot.captured", targetType: "identity_risk_snapshot",
+      outcome: "SUCCESS", reason: "Daily identity risk snapshot captured.",
+      metadata: { capturedOn: capturedOn.toISOString().slice(0, 10), identityCount: snapshots.length, methodology: "NEXUSID_DETERMINISTIC_V1" },
+    } });
+  });
   revalidatePath("/identities");
 }

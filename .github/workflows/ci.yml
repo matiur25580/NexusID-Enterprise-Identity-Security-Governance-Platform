@@ -13,6 +13,20 @@ jobs:
   web:
     name: Web checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nexusid
+          POSTGRES_PASSWORD: nexusid
+          POSTGRES_DB: nexusid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexusid -d nexusid"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://nexusid:nexusid@localhost:5432/nexusid?schema=public
       AUTH_SECRET: ci-only-not-a-production-secret
@@ -39,8 +53,16 @@ jobs:
       - name: Validate Prisma schema
         run: pnpm db:validate
 
+      - name: Prepare integration database
+        run: pnpm db:push
+
       - name: Policy regression tests
         run: pnpm test:policy
+
+      - name: Tenant isolation integration tests
+        run: pnpm test:integration
+        env:
+          NEXUSID_INTEGRATION_TEST: "1"
 
       - name: Typecheck
         run: pnpm typecheck

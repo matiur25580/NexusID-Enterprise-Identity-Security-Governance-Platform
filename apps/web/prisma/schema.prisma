@@ -74,6 +74,7 @@ model Organization {
   accessGrants   AccessGrant[]
   certificationCampaigns CertificationCampaign[]
   policyRules PolicyRule[]
+  identityRiskSnapshots IdentityRiskSnapshot[]
 
   @@index([createdAt])
 }
@@ -164,6 +165,7 @@ model Identity {
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   accessRequests AccessRequest[]
   accessGrants   AccessGrant[]
+  riskSnapshots IdentityRiskSnapshot[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId, type, status])
@@ -354,4 +356,22 @@ model PolicyRuleVersion {
 
   @@unique([policyRuleId, version])
   @@index([policyRuleId, createdAt])
+}
+
+model IdentityRiskSnapshot {
+  id             String       @id @default(cuid())
+  organizationId String
+  identityId     String
+  score          Int
+  level          String
+  factors        Json
+  methodology    String
+  capturedOn     DateTime     @db.Date
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identity       Identity     @relation(fields: [identityId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, identityId, capturedOn])
+  @@index([organizationId, capturedOn])
+  @@index([identityId, capturedOn])
 }

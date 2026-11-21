@@ -13,6 +13,7 @@
     "lint": "pnpm --filter @nexusid/web lint",
     "typecheck": "pnpm --filter @nexusid/web typecheck",
     "test:policy": "node --test tests/policy-regression.test.mjs",
+    "test:integration": "pnpm --filter @nexusid/web test:integration",
     "db:generate": "pnpm --filter @nexusid/web exec prisma generate --schema prisma/schema.prisma",
     "db:validate": "pnpm --filter @nexusid/web exec prisma validate --schema prisma/schema.prisma",
     "db:push": "pnpm --filter @nexusid/web exec prisma db push --schema prisma/schema.prisma",
