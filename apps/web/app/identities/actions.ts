@@ -114,7 +114,7 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
     if (!identity) throw new Error("Identity not found.");
     if (identity.status === parsed.data.status) return;
     await tx.identity.update({
-      where: { id: identity.id },
+      where: { id: identity.id, organizationId: membership.organizationId },
       data: { status: parsed.data.status },
     });
     await tx.auditEvent.create({

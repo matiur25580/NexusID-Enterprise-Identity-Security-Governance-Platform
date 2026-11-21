@@ -88,7 +88,7 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
         priority: data.priority, version: { increment: 1 }, lastSimulatedAt: null, validatedVersion: null,
       } });
       if (changed.count !== 1) throw new Error("This policy changed in another session. Reload it and try again.");
-      const updated = await tx.policyRule.findUniqueOrThrow({ where: { id: existing.id } });
+      const updated = await tx.policyRule.findFirstOrThrow({ where: { id: existing.id, organizationId: actor.organizationId } });
       await tx.policyRuleVersion.create({ data: {
         policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
         changeNote, changedById: actor.userId,
@@ -125,7 +125,7 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
       ...(enabled ? { validatedVersion: rule.version } : {}),
     }, data: { enabled, version: { increment: 1 }, validatedVersion: null } });
     if (changed.count !== 1) throw new Error("The policy changed or needs a fresh simulation. Reload and try again.");
-    const updated = await tx.policyRule.findUniqueOrThrow({ where: { id: rule.id } });
+    const updated = await tx.policyRule.findFirstOrThrow({ where: { id: rule.id, organizationId: actor.organizationId } });
     await tx.policyRuleVersion.create({ data: {
       policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
       changeNote: enabled ? "Enabled after simulation" : "Disabled by policy manager", changedById: actor.userId,
@@ -171,7 +171,7 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
   await withTenantContext(membership.organizationId, async (tx) => {
     const simulatedAt = new Date();
     for (const rule of policyRecords) {
-      await tx.policyRule.update({ where: { id: rule.id }, data: { lastSimulatedAt: simulatedAt, validatedVersion: rule.version } });
+      await tx.policyRule.update({ where: { id: rule.id, organizationId: membership.organizationId }, data: { lastSimulatedAt: simulatedAt, validatedVersion: rule.version } });
     }
     await tx.auditEvent.create({ data: {
       organizationId: membership.organizationId, actorUserId: session.user.id, action: "policy.simulated",
