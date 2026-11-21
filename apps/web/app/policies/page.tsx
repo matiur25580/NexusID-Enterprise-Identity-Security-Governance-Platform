@@ -1,26 +1,26 @@
 import { getTenantContext } from "@/lib/tenant";
-import { prisma } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import PolicyStudio from "@/components/policy-studio";
 
 export default async function PoliciesPage() {
   const context = await getTenantContext();
-  const [identities, entitlements, policies] = await Promise.all([
-    prisma.identity.findMany({
+  const [identities, entitlements, policies] = await withTenantContext(context.organization.id, (tx) => Promise.all([
+    tx.identity.findMany({
       where: { organizationId: context.organization.id },
       select: { id: true, displayName: true, email: true, type: true, status: true },
       orderBy: { displayName: "asc" }, take: 500,
     }),
-    prisma.entitlement.findMany({
+    tx.entitlement.findMany({
       where: { organizationId: context.organization.id },
       include: { application: { select: { name: true } } },
       orderBy: [{ riskLevel: "desc" }, { name: "asc" }], take: 500,
     }),
-    prisma.policyRule.findMany({
+    tx.policyRule.findMany({
       where: { organizationId: context.organization.id },
       include: { versions: { orderBy: { version: "desc" }, take: 5, include: { changedBy: { select: { name: true, email: true } } } } },
       orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
     }),
-  ]);
+  ]));
   return <PolicyStudio
     organizationName={context.organization.name}
     canManage={["OWNER", "ADMIN", "SECURITY_ANALYST"].includes(context.membership.role)}
