@@ -10,7 +10,7 @@ import {
 type Identity = { id: string; displayName: string; email: string | null; type: string; status: string };
 type Entitlement = { id: string; name: string; key: string; riskLevel: string; privileged: boolean; enabled: boolean; applicationName: string };
 type Version = { version: number; changeNote: string | null; createdAt: string; actor: string | null };
-type Policy = { id: string; key: string; name: string; description: string | null; effect: string; field: string; operator: string; value: string; priority: number; enabled: boolean; version: number; lastSimulatedAt: string | null; updatedAt: string; versions: Version[] };
+type Policy = { id: string; key: string; name: string; description: string | null; effect: string; field: string; operator: string; value: string; priority: number; enabled: boolean; version: number; lastSimulatedAt: string | null; validatedVersion: number | null; updatedAt: string; versions: Version[] };
 const initialSimulation: PolicySimulationState = {};
 const initialAction: PolicyActionState = {};
 const fields = [
@@ -66,7 +66,7 @@ function EditPolicyForm({ policy }: { policy: Policy }) {
 }
 
 function PolicyCard({ policy, canManage }: { policy: Policy; canManage: boolean }) {
-  const simulated = Boolean(policy.lastSimulatedAt && policy.lastSimulatedAt >= policy.updatedAt);
+  const simulated = policy.validatedVersion === policy.version;
   return <article className="policy-managed-card">
     <div className="policy-managed-heading">
       <span className={"policy-rule-icon " + policy.effect.toLowerCase()}>{policy.effect === "DENY" ? <Ban size={15}/> : policy.effect === "REVIEW" ? <CircleAlert size={15}/> : <CheckCircle2 size={15}/>}</span>
