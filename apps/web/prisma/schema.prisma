@@ -47,6 +47,18 @@ enum AccessGrantStatus {
   REVOKED
 }
 
+enum CertificationCampaignStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CertificationItemStatus {
+  PENDING
+  CERTIFIED
+  REVOKED
+}
+
 model Organization {
   id          String       @id @default(cuid())
   name        String
@@ -60,6 +72,7 @@ model Organization {
   entitlements   Entitlement[]
   accessRequests AccessRequest[]
   accessGrants   AccessGrant[]
+  certificationCampaigns CertificationCampaign[]
 
   @@index([createdAt])
 }
@@ -79,6 +92,8 @@ model User {
   requestedAccess AccessRequest[] @relation("AccessRequester")
   decidedAccess   AccessRequest[] @relation("AccessDecider")
   grantedAccess   AccessGrant[]   @relation("GrantActor")
+  createdCertifications CertificationCampaign[] @relation("CertificationCreator")
+  reviewedCertifications CertificationItem[] @relation("CertificationReviewer")
 }
 
 model Account {
@@ -234,9 +249,48 @@ model AccessGrant {
   entitlement    Entitlement      @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
   request        AccessRequest?   @relation(fields: [requestId], references: [id], onDelete: SetNull)
   grantedBy      User?            @relation("GrantActor", fields: [grantedById], references: [id], onDelete: SetNull)
+  certificationItems CertificationItem[]
 
   @@index([organizationId, status, grantedAt])
   @@index([identityId, entitlementId, status])
+}
+
+model CertificationCampaign {
+  id             String                      @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?                     @db.Text
+  status         CertificationCampaignStatus @default(IN_PROGRESS)
+  dueAt          DateTime
+  createdById    String
+  completedAt    DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User                        @relation("CertificationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  items          CertificationItem[]
+
+  @@index([organizationId, status, dueAt])
+  @@index([createdById, createdAt])
+}
+
+model CertificationItem {
+  id             String                  @id @default(cuid())
+  campaignId     String
+  grantId        String
+  status         CertificationItemStatus @default(PENDING)
+  reviewerId     String?
+  decisionReason String?                 @db.Text
+  decidedAt      DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  campaign       CertificationCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  grant          AccessGrant              @relation(fields: [grantId], references: [id], onDelete: Restrict)
+  reviewer       User?                    @relation("CertificationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, grantId])
+  @@index([campaignId, status])
+  @@index([grantId, status])
 }
 
 model AuditEvent {
