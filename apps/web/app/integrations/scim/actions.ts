@@ -40,14 +40,13 @@ export async function createScimGroupMapping(groupId:string,entitlementId:string
  const current=await actor();
  const parsed=z.object({groupId:z.string().min(1),entitlementId:z.string().min(1)}).safeParse({groupId,entitlementId});
  if(!parsed.success)throw new Error("Choose a valid SCIM group and entitlement.");
- const [group,entitlement]=await Promise.all([
-  prisma.scimGroup.findFirst({where:{id:groupId,organizationId:current.organizationId},select:{id:true,connectorId:true,displayName:true}}),
-  prisma.entitlement.findFirst({where:{id:entitlementId,organizationId:current.organizationId,enabled:true},select:{id:true,name:true}})
+ const [group,entitlement]=await withTenantContext(current.organizationId, tx=>Promise.all([
+  tx.scimGroup.findFirst({where:{id:groupId,organizationId:current.organizationId},select:{id:true,connectorId:true,displayName:true}}),
+  tx.entitlement.findFirst({where:{id:entitlementId,organizationId:current.organizationId,enabled:true},select:{id:true,name:true}})
  ]);
  if(!group||!entitlement)throw new Error("Group and enabled entitlement must belong to this workspace.");
- const mapping=await prisma.scimGroupEntitlementMapping.create({data:{organizationId:current.organizationId,groupId,entitlementId}});
- await prisma.auditEvent.create({data:{organizationId:current.organizationId,actorUserId:current.userId,action:"scim.group.entitlement_mapping.created",targetType:"scim_group_entitlement_mapping",targetId:mapping.id,outcome:"SUCCESS",metadata:{groupId,entitlementId}}});
- const connector=await prisma.scimConnector.findFirst({where:{id:group.connectorId,organizationId:current.organizationId,enabled:true},select:{id:true,organizationId:true,createdById:true}});
+ const mapping=await withTenantContext(current.organizationId, async tx=>{const created=await tx.scimGroupEntitlementMapping.create({data:{organizationId:current.organizationId,groupId,entitlementId}});await tx.auditEvent.create({data:{organizationId:current.organizationId,actorUserId:current.userId,action:"scim.group.entitlement_mapping.created",targetType:"scim_group_entitlement_mapping",targetId:created.id,outcome:"SUCCESS",metadata:{groupId,entitlementId}}});return created;});
+ const connector=await withTenantContext(current.organizationId, tx=>tx.scimConnector.findFirst({where:{id:group.connectorId,organizationId:current.organizationId,enabled:true},select:{id:true,organizationId:true,createdById:true}}));
  if(connector)await (await import("@/lib/scim-group-sync")).syncGroupAccessRequests(groupId,connector);
  revalidatePath("/integrations/scim");revalidatePath("/governance");
 }
