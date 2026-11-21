@@ -82,7 +82,7 @@ docs/
 - [x] Identity directory (tenant-scoped CRUD and status governance)\n- [ ] Entitlement catalog
 - [x] Access requests and approvals\n- [ ] Certification campaigns
 - [ ] Lifecycle workflows and connector framework
-- [ ] Risk scoring, policy simulation and audit evidence
+- [x] Baseline policy evaluation, simulation and audit evidence
 - [ ] Integration, security and end-to-end test suites
 
 ## Security
