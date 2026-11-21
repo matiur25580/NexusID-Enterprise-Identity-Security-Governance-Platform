@@ -134,9 +134,10 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
   if (!session?.user?.id) return { error: "Sign in to run a policy simulation." };
   const membership = await prisma.membership.findFirst({
     where: { userId: session.user.id }, orderBy: { createdAt: "asc" },
-    select: { organizationId: true },
+    select: { organizationId: true, role: true },
   });
   if (!membership) return { error: "No organization workspace found." };
+  if (!policyManagers.includes(membership.role)) return { error: "Only policy managers can run activation-gating simulations." };
   const parsed = z.object({ identityId: z.string().min(1), entitlementId: z.string().min(1) }).safeParse({
     identityId: formData.get("identityId"), entitlementId: formData.get("entitlementId"),
   });
