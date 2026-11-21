@@ -78,7 +78,7 @@ docs/
 
 - [x] Repository and application foundation
 - [x] Initial multi-tenant identity domain schema
-- [ ] Authentication, organizations and server-side authorization
+- [x] Authentication, organizations and server-side authorization
 - [ ] Identity directory and entitlement catalog
 - [ ] Access requests, approvals and certification campaigns
 - [ ] Lifecycle workflows and connector framework
