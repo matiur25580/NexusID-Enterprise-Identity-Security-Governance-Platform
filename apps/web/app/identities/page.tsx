@@ -1,5 +1,5 @@
 import { MembershipRole } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import { getTenantContext } from "@/lib/tenant";
 import { hasOrganizationRole } from "@/lib/authorization";
 import { calculateIdentityRisk } from "@/lib/identity-risk";
@@ -9,8 +9,8 @@ export default async function IdentitiesPage() {
   const windowStart = new Date();
   windowStart.setUTCDate(windowStart.getUTCDate() - 29);
   windowStart.setUTCHours(0, 0, 0, 0);
-  const [identities, snapshots, alerts] = await Promise.all([
-    prisma.identity.findMany({
+  const [identities, snapshots, alerts] = await withTenantContext(context.organization.id, (tx) => Promise.all([
+    tx.identity.findMany({
       where: { organizationId: context.organization.id },
       orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }], take: 250,
       select: {
@@ -19,13 +19,13 @@ export default async function IdentitiesPage() {
         accessGrants: { where: { organizationId: context.organization.id, status: "ACTIVE" }, select: { entitlement: { select: { riskLevel: true, privileged: true } } } },
       },
     }),
-    prisma.identityRiskSnapshot.findMany({
+    tx.identityRiskSnapshot.findMany({
       where: { organizationId: context.organization.id, capturedOn: { gte: windowStart } },
       orderBy: { capturedOn: "asc" },
       select: { id: true, identityId: true, score: true, level: true, capturedOn: true },
     }),
-    prisma.identityRiskAlert.findMany({ where: { organizationId: context.organization.id }, include: { identity: { select: { displayName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 20 }),
-  ]);
+    tx.identityRiskAlert.findMany({ where: { organizationId: context.organization.id }, include: { identity: { select: { displayName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 20 }),
+  ]));
   const asOf = new Date();
   const daily = new Map<string, { date: string; count: number; averageScore: number; elevated: number; total: number }>();
   for (const snapshot of snapshots) {

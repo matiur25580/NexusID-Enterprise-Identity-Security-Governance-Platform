@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import { authenticateScim,scimError } from "@/lib/scim";
 import { normalizeScimGroup } from "@/lib/scim-groups-core.mjs";
 import { syncGroupAccessRequests } from "@/lib/scim-group-sync";
@@ -10,16 +10,16 @@ export async function GET(request:Request){
  const filter=url.searchParams.get("filter");let externalId:string|undefined;
  if(filter){const match=filter.match(/^\s*displayName\s+eq\s+"([^"]{1,200})"\s*$/i);if(!match)return scimError(400,"Only exact displayName equality is supported.","invalidFilter");externalId=match[1];}
  const where={organizationId:connector.organizationId,connectorId:connector.id,...(externalId?{displayName:externalId}:{})};
- const [total,groups]=await Promise.all([prisma.scimGroup.count({where}),prisma.scimGroup.findMany({where,include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}},orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]);
+ const [total,groups]=await withTenantContext(connector.organizationId, tx=>Promise.all([tx.scimGroup.count({where}),tx.scimGroup.findMany({where,include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}},orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]));
  return NextResponse.json({schemas:["urn:ietf:params:scim:api:messages:2.0:ListResponse"],totalResults:total,startIndex,itemsPerPage:groups.length,Resources:groups.map(g=>({schemas:["urn:ietf:params:scim:schemas:core:2.0:Group"],id:g.id,externalId:g.externalId,displayName:g.displayName,members:g.members.map(m=>({value:m.identityId,type:"User"})),meta:{resourceType:"Group",created:g.createdAt.toISOString(),lastModified:g.updatedAt.toISOString()}}))},{headers:{"Content-Type":"application/scim+json"}});
 }
 export async function POST(request:Request){
  const connector=await authenticateScim(request);if(!connector)return scimError(401,"A valid SCIM bearer token is required.","invalidCredentials");
  let input;try{input=normalizeScimGroup(await request.json());}catch(e){return scimError(400,e instanceof Error?e.message:"Invalid SCIM Group.");}
- const identities=await prisma.identity.findMany({where:{id:{in:input.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}});
+ const identities=await withTenantContext(connector.organizationId, tx=>tx.identity.findMany({where:{id:{in:input.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}}));
  if(identities.length!==input.members.length)return scimError(400,"Every group member must be a User provisioned by this connector.");
  try{
-  const group=await prisma.$transaction(async tx=>{
+  const group=await withTenantContext(connector.organizationId, async tx=>{
    const created=await tx.scimGroup.create({data:{organizationId:connector.organizationId,connectorId:connector.id,externalId:input.externalId,displayName:input.displayName,members:{create:input.members.map(identityId=>({identityId}))}}});
    await tx.auditEvent.create({data:{organizationId:connector.organizationId,actorUserId:connector.createdById,action:"scim.group.created",targetType:"scim_group",targetId:created.id,outcome:"SUCCESS",metadata:{connectorId:connector.id,externalId:created.externalId,memberCount:input.members.length}}});
    return created;

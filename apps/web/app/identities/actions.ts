@@ -3,7 +3,7 @@
 import { IdentityStatus, IdentityType, MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { calculateIdentityRisk } from "@/lib/identity-risk";
@@ -52,7 +52,7 @@ export async function createIdentity(
   await requireOrganizationRole(membership.organizationId, writeRoles);
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await withTenantContext(membership.organizationId, async (tx) => {
       const identity = await tx.identity.create({
         data: {
           organizationId: membership.organizationId,
@@ -98,16 +98,21 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
   });
   if (!parsed.success) throw new Error("Invalid identity status.");
 
-  const identity = await prisma.identity.findUnique({
-    where: { id: parsed.data.identityId },
-    select: { id: true, organizationId: true, status: true },
+  const membership = await prisma.membership.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+    select: { organizationId: true },
   });
-  if (!identity) throw new Error("Identity not found.");
+  if (!membership) throw new Error("No organization workspace was found.");
+  await requireOrganizationRole(membership.organizationId, writeRoles);
 
-  await requireOrganizationRole(identity.organizationId, writeRoles);
-  if (identity.status === parsed.data.status) return;
-
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(membership.organizationId, async (tx) => {
+    const identity = await tx.identity.findFirst({
+      where: { id: parsed.data.identityId, organizationId: membership.organizationId },
+      select: { id: true, organizationId: true, status: true },
+    });
+    if (!identity) throw new Error("Identity not found.");
+    if (identity.status === parsed.data.status) return;
     await tx.identity.update({
       where: { id: identity.id },
       data: { status: parsed.data.status },
@@ -137,21 +142,21 @@ export async function captureIdentityRiskSnapshots(): Promise<void> {
   });
   if (!membership) throw new Error("No organization workspace was found.");
   await requireOrganizationRole(membership.organizationId, writeRoles);
-  const identities = await prisma.identity.findMany({
-    where: { organizationId: membership.organizationId },
-    select: { id: true, status: true, type: true, lastSeenAt: true,
-      accessGrants: { where: { organizationId: membership.organizationId, status: "ACTIVE" },
-        select: { entitlement: { select: { riskLevel: true, privileged: true } } } } },
-  });
-  const now = new Date();
-  const capturedOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const snapshots = identities.map((identity) => {
-    const risk = calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt,
-      activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, now);
-    return { organizationId: membership.organizationId, identityId: identity.id, score: risk.score,
-      level: risk.level, factors: risk.factors as Prisma.InputJsonArray, methodology: risk.methodology, capturedOn };
-  });
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(membership.organizationId, async (tx) => {
+    const identities = await tx.identity.findMany({
+      where: { organizationId: membership.organizationId },
+      select: { id: true, status: true, type: true, lastSeenAt: true,
+        accessGrants: { where: { organizationId: membership.organizationId, status: "ACTIVE" },
+          select: { entitlement: { select: { riskLevel: true, privileged: true } } } } },
+    });
+    const now = new Date();
+    const capturedOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const snapshots = identities.map((identity) => {
+      const risk = calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt,
+        activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, now);
+      return { organizationId: membership.organizationId, identityId: identity.id, score: risk.score,
+        level: risk.level, factors: risk.factors as Prisma.InputJsonArray, methodology: risk.methodology, capturedOn };
+    });
     if (snapshots.length) await tx.identityRiskSnapshot.createMany({ data: snapshots, skipDuplicates: true });
     await tx.auditEvent.create({ data: {
       organizationId: membership.organizationId, actorUserId: session.user.id,

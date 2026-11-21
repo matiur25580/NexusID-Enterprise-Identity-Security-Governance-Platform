@@ -3,7 +3,7 @@
 import { MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 
@@ -38,14 +38,14 @@ export async function createCertificationCampaign(_prev: ActionState, formData: 
   });
   if (!parsed.success) return { error: "Enter a campaign name and a future due date." };
 
-  const activeGrants = await prisma.accessGrant.findMany({
+  const activeGrants = await withTenantContext(actor.organizationId, (tx) => tx.accessGrant.findMany({
     where: { organizationId: actor.organizationId, status: "ACTIVE" },
     select: { id: true },
     orderBy: { grantedAt: "asc" },
-  });
+  }));
   if (activeGrants.length === 0) return { error: "There are no active grants to certify. Approve access requests first." };
 
-  const campaign = await prisma.$transaction(async (tx) => {
+  const campaign = await withTenantContext(actor.organizationId, async (tx) => {
     const created = await tx.certificationCampaign.create({
       data: {
         organizationId: actor.organizationId,
@@ -89,17 +89,17 @@ export async function decideCertificationItem(formData: FormData): Promise<void>
   });
   if (!parsed.success) throw new Error("Provide a valid certification decision and rationale.");
 
-  const item = await prisma.certificationItem.findFirst({
+  const item = await withTenantContext(actor.organizationId, (tx) => tx.certificationItem.findFirst({
     where: { id: parsed.data.itemId, campaign: { organizationId: actor.organizationId, status: "IN_PROGRESS" } },
     include: { campaign: true, grant: { include: { identity: true, entitlement: { include: { application: true } } } } },
-  });
+  }));
   if (!item) throw new Error("Certification item not found or its campaign is no longer active.");
   if (item.status !== "PENDING") throw new Error("This item has already been reviewed.");
   if (item.grant.status !== "ACTIVE" && parsed.data.decision === "CERTIFIED") {
     throw new Error("This grant is no longer active. Record it as revoked instead.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const updated = await tx.certificationItem.updateMany({
       where: { id: item.id, campaignId: item.campaignId, status: "PENDING" },
       data: {
