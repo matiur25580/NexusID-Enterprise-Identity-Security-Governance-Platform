@@ -152,7 +152,12 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgA.id } }), 2);
     assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 1);
   } finally {
-    if (createdOrgIds.length) await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
+    // Certification items reference access grants with a restrictive foreign key;
+    // remove tenant-owned review items before cascading organization fixtures.
+    if (createdOrgIds.length) {
+      await prisma.certificationItem.deleteMany({ where: { campaign: { organizationId: { in: createdOrgIds } } } });
+      await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
+    }
     if (createdUserIds.length) await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await prisma.$disconnect();
   }
