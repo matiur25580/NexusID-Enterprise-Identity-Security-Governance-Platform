@@ -142,7 +142,7 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
           : "Identity status changed to a non-active state and all active access grants were revoked and pending access requests were cancelled.",
         metadata: { previousStatus: identity.status, newStatus: parsed.data.status, grantsRevoked: revoked.count, pendingRequestsCancelled: cancelled.count },
       },
-    });;
+    });
   });
 
   revalidatePath("/identities");
