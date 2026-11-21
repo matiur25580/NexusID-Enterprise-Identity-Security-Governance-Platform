@@ -79,7 +79,7 @@ docs/
 - [x] Repository and application foundation
 - [x] Initial multi-tenant identity domain schema
 - [x] Authentication, organizations and server-side authorization
-- [ ] Identity directory and entitlement catalog
+- [x] Identity directory (tenant-scoped CRUD and status governance)\n- [ ] Entitlement catalog
 - [ ] Access requests, approvals and certification campaigns
 - [ ] Lifecycle workflows and connector framework
 - [ ] Risk scoring, policy simulation and audit evidence
