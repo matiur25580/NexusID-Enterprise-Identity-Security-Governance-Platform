@@ -14,7 +14,7 @@ type Campaign = {
   id: string; name: string; description: string | null; status: string; dueAt: string; createdAt: string;
   completedAt: string | null; createdBy: string; items: Item[];
 };
-const empty = {};
+const empty: { error?: string; success?: string } = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
