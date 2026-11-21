@@ -209,6 +209,7 @@ model AccessRequest {
   entitlement      Entitlement         @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
   requester        User                @relation("AccessRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
   decisionUser     User?               @relation("AccessDecider", fields: [decisionUserId], references: [id], onDelete: SetNull)
+  grant            AccessGrant?
 
   @@index([organizationId, status, createdAt])
   @@index([identityId, entitlementId, status])
