@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {normalizeScimUser,applyScimPatch,parseScimFilter} from "../apps/web/lib/scim-core.mjs";
+test("normalizes SCIM User with required userName and safe defaults",()=>assert.deepEqual(normalizeScimUser({userName:"ada@example.com",displayName:"Ada",emails:[{value:"ada@example.com",primary:true}]}),{userName:"ada@example.com",externalId:null,displayName:"Ada",email:"ada@example.com",active:true}));
+test("rejects missing userName",()=>assert.throws(()=>normalizeScimUser({displayName:"No user"}),/USERNAME_REQUIRED/));
+test("SCIM active false is normalized to disabled intent",()=>assert.equal(normalizeScimUser({userName:"x",active:false}).active,false));
+test("PATCH supports active deactivation and displayName update",()=>assert.deepEqual(applyScimPatch({userName:"a",externalId:"1",displayName:"A",email:null,active:true},[{op:"replace",path:"active",value:false},{op:"replace",path:"displayName",value:"Ada"}]),{userName:"a",externalId:"1",displayName:"Ada",email:null,active:false}));
+test("PATCH rejects unsupported arbitrary paths",()=>assert.throws(()=>applyScimPatch({userName:"a",externalId:null,displayName:"A",email:null,active:true},[{op:"replace",path:"password",value:"secret"}]),/UNSUPPORTED_PATCH_PATH/));
+test("PATCH rejects non-boolean active",()=>assert.throws(()=>applyScimPatch({userName:"a",externalId:null,displayName:"A",email:null,active:true},[{op:"replace",path:"active",value:"false"}]),/ACTIVE_MUST_BE_BOOLEAN/));
+test("filter parser accepts exact userName and externalId equality",()=>{assert.deepEqual(parseScimFilter('userName eq "ada@example.com"'),{field:"userName",value:"ada@example.com"});assert.deepEqual(parseScimFilter('externalId eq "hr-12"'),{field:"externalId",value:"hr-12"});});
+test("filter parser rejects unsupported expressions",()=>assert.throws(()=>parseScimFilter('userName co "ada"'),/UNSUPPORTED_FILTER/));

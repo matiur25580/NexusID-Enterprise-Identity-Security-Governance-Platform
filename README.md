@@ -138,8 +138,9 @@ A future governance surface for AI agents, service principals and workloads, inc
 | Identity risk | Implemented | Explainable deterministic scoring and daily snapshots |
 | Risk alerts | Implemented | Critical threshold and material score-increase alerts |
 | Identity lifecycle | Implemented | Approval-controlled Joiner, Mover and Leaver workflows with transactional execution and audit events |
+| SCIM 2.0 Users | Implemented (initial scope) | Tenant-bound bearer connectors, SCIM User CRUD/PATCH/deactivate, hashed secrets and audit events |
 | Tenant integration tests | Implemented | PostgreSQL-backed tenant query and membership-role checks in CI |
-| SCIM/SAML provisioning | Roadmap | No production connector |
+| SCIM Groups / outbound provisioning | Roadmap | Initial inbound SCIM Users API only; no Groups or outbound reconciliation worker |
 | JIT/PAM sessions | Roadmap | No session broker or credential vault |
 | Lifecycle provisioning | Roadmap | No external provisioning worker |
 | SIEM/SOAR delivery | Roadmap | No external alert delivery |
@@ -296,7 +297,7 @@ Generate a random secret with `openssl rand -hex 32`. Never commit real secrets 
 
 ## Database and migrations
 
-The Prisma schema contains organizations, identities, memberships, entitlements, grants, policies, certifications, audit events, risk snapshots and risk alerts.
+The Prisma schema contains organizations, identities, SCIM connectors, memberships, entitlements, grants, policies, certifications, audit events, risk snapshots and risk alerts.
 
 New risk-alert table migration: `apps/web/prisma/migrations/20261121113000_add_identity_risk_alerts/migration.sql`.
 
@@ -334,6 +335,14 @@ Configure these GitHub repository Actions secrets:
 
 If secrets are missing, the workflow warns and safely skips. The application must be deployed and reachable for scheduled snapshots to run. External email/chat/SIEM alert delivery is not included.
 
+## SCIM 2.0 provisioning (initial Users scope)
+
+The /integrations/scim workspace creates organization-bound SCIM bearer connectors. Each generated token is displayed once; only its SHA-256 hash is stored. Configure the source URL as https://YOUR_HOST/api/scim/v2 and use the token as an HTTP Bearer credential.
+
+Implemented endpoints: GET/POST /Users and GET/PUT/PATCH/DELETE /Users/{id}. Exact userName and externalId equality filters and startIndex/count pagination are supported. Deactivation disables the identity and revokes active NexusID grants transactionally. SCIM never creates access grants or bypasses NexusID policy/approval workflows.
+
+This is an inbound Users service-provider API, not a complete SCIM suite. Groups, outbound provisioning, background reconciliation, retries, rate limiting and production connector health monitoring remain future work. Use TLS, store the token in a secret manager, rotate credentials and put an API gateway/WAF with rate limits in front of the endpoint.
+
 ## Identity lifecycle management
 
 The `/lifecycle` workspace provides approval-controlled identity lifecycle requests:
@@ -358,6 +367,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - [Identity risk intelligence](docs/IDENTITY_RISK_INTELLIGENCE.md)
 - [Tenant tests and risk trends](docs/SECURITY_TESTING_AND_RISK_TRENDS.md)
 - [Scheduled risk assessments](docs/SCHEDULED_RISK_ASSESSMENTS.md)
+- [SCIM 2.0 provisioning](docs/SCIM_PROVISIONING.md)
 
 ## Roadmap
 
@@ -370,7 +380,8 @@ This is an internal governance workflow, not an external provisioning connector.
 - [x] Risk escalation detection and scheduled assessment endpoint
 - [x] Approval-controlled Joiner / Mover / Leaver lifecycle workflows
 - [x] PostgreSQL tenant-isolation integration checks in CI
-- [ ] SCIM 2.0 external provisioning and reconciliation
+- [x] SCIM 2.0 inbound Users provisioning API (initial scope)
+- [ ] SCIM Groups, outbound provisioning and reconciliation worker
 - [ ] SCIM 2.0 / SAML 2.0 connector framework
 - [ ] Privileged session brokering and time-bound access
 - [ ] Alert acknowledgement and email/chat/SIEM delivery

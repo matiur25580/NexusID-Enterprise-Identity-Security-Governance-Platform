@@ -1,0 +1,1 @@
+export function planLifecycleTransition(input:{type:"JOINER"|"MOVER"|"LEAVER";identityStatus:string;activeGrantIds:string[];selectedGrantIds?:string[]}):{identityStatus:string;revokeGrantIds:string[]};

@@ -65,6 +65,9 @@ jobs:
       - name: Lifecycle regression tests
         run: pnpm test:lifecycle
 
+      - name: SCIM protocol regression tests
+        run: pnpm test:scim
+
       - name: Tenant isolation integration tests
         run: pnpm test:integration
         env:

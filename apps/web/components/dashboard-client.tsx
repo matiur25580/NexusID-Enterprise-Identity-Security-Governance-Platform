@@ -70,7 +70,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
               <p className="nav-heading">{group.label}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                return <a className={item.active ? "nav-link active" : "nav-link"} href={item.label === "Identity directory" ? "/identities" : item.label === "Identity lifecycle" ? "/lifecycle" : item.label === "Access governance" ? "/governance" : item.label === "Access certifications" ? "/certifications" : item.label === "Policy studio" ? "/policies" : "#"} key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
+                return <a className={item.active ? "nav-link active" : "nav-link"} href={item.label === "Identity directory" ? "/identities" : item.label === "Identity lifecycle" ? "/lifecycle" : item.label === "Access governance" ? "/governance" : item.label === "Access certifications" ? "/certifications" : item.label === "Policy studio" ? "/policies" : item.label === "Integrations" ? "/integrations/scim" : "#"} key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
               })}
             </div>
           ))}

@@ -89,6 +89,7 @@ model Organization {
   identityRiskSnapshots IdentityRiskSnapshot[]
   identityRiskAlerts IdentityRiskAlert[]
   lifecycleRequests LifecycleRequest[]
+  scimConnectors ScimConnector[]
 
   @@index([createdAt])
 }
@@ -113,6 +114,7 @@ model User {
   changedPolicyVersions PolicyRuleVersion[] @relation("PolicyVersionActor")
   requestedLifecycleRequests LifecycleRequest[] @relation("LifecycleRequester")
   decidedLifecycleRequests LifecycleRequest[] @relation("LifecycleDecider")
+  createdScimConnectors ScimConnector[] @relation("ScimConnectorCreator")
 }
 
 model Account {
@@ -170,6 +172,7 @@ model Identity {
   id             String         @id @default(cuid())
   organizationId String
   externalId     String?
+  userName       String?
   displayName    String
   email          String?
   type           IdentityType
@@ -186,6 +189,7 @@ model Identity {
   lifecycleRequests LifecycleRequest[]
 
   @@unique([organizationId, externalId])
+  @@unique([organizationId, userName])
   @@index([organizationId, type, status])
   @@index([organizationId, email])
 }
@@ -431,4 +435,20 @@ model LifecycleRequest {
   decisionUser   User?                  @relation("LifecycleDecider", fields: [decisionUserId], references: [id], onDelete: SetNull)
   @@index([organizationId, status, createdAt])
   @@index([identityId, status])
+}
+
+model ScimConnector {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  tokenHash      String       @unique
+  enabled        Boolean      @default(true)
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User         @relation("ScimConnectorCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([organizationId, enabled, createdAt])
 }
