@@ -88,11 +88,20 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
         assert.deepEqual((await tx.entitlement.findMany()).map((item) => item.id), [entitlementA.id]);
         assert.deepEqual((await tx.auditEvent.findMany({ select: { organizationId: true } })).map((item) => item.organizationId), [orgA.id]);
         await tx.auditEvent.create({ data: { organizationId: orgA.id, action: "tenant-a.rls-insert", targetType: "integration", outcome: "SUCCESS" } });
-        await assert.rejects(
-          tx.auditEvent.create({ data: { organizationId: orgB.id, action: "tenant-b.rls-insert-denied", targetType: "integration", outcome: "SUCCESS" } }),
-          () => true,
-          "RLS must reject an audit write for another tenant.",
-        );
+        // A PostgreSQL statement error aborts the current transaction. Isolate
+        // the expected RLS rejection behind a savepoint so the rest of this
+        // interactive transaction can continue and verify tenant B's view.
+        await tx.$executeRawUnsafe("SAVEPOINT before_cross_tenant_audit_insert");
+        let crossTenantInsertRejected = false;
+        try {
+          await tx.auditEvent.create({ data: { organizationId: orgB.id, action: "tenant-b.rls-insert-denied", targetType: "integration", outcome: "SUCCESS" } });
+        } catch {
+          crossTenantInsertRejected = true;
+        } finally {
+          await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT before_cross_tenant_audit_insert");
+          await tx.$executeRawUnsafe("RELEASE SAVEPOINT before_cross_tenant_audit_insert");
+        }
+        assert.equal(crossTenantInsertRejected, true, "RLS must reject an audit write for another tenant.");
         assert.equal(await tx.auditEvent.count(), 2, "Tenant A can read only its own audit events.");
         await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${orgB.id}, true)`;
         assert.deepEqual((await tx.identity.findMany()).map((item) => item.id), [identityB.id]);
