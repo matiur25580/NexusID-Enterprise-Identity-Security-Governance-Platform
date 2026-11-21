@@ -6,3 +6,8 @@ export function planLifecycleTransition({type,identityStatus,activeGrantIds,sele
  if(selectedGrantIds.some(id=>!activeGrantIds.includes(id)))throw new Error("GRANT_NOT_ACTIVE_FOR_IDENTITY");
  return type==="JOINER"?{identityStatus:"ACTIVE",revokeGrantIds:[]}:type==="LEAVER"?{identityStatus:"DISABLED",revokeGrantIds:[...activeGrantIds]}:{identityStatus,revokeGrantIds:[...selectedGrantIds]};
 }
+
+/** Enforce maker-checker separation for lifecycle approvals. */
+export function isIndependentApprover({requesterUserId,approverUserId}) {
+ return Boolean(requesterUserId && approverUserId && requesterUserId !== approverUserId);
+}

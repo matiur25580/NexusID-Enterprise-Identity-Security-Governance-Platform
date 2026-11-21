@@ -9,3 +9,12 @@ test("mover rejects grants outside identity active grants",()=>assert.throws(()=
 test("leaver disables identity and revokes all active grants",()=>assert.deepEqual(planLifecycleTransition({type:"LEAVER",identityStatus:"ACTIVE",activeGrantIds:["a","b"]}),{identityStatus:"DISABLED",revokeGrantIds:["a","b"]}));
 test("leaver cannot be repeated for disabled identity",()=>assert.throws(()=>planLifecycleTransition({type:"LEAVER",identityStatus:"DISABLED",activeGrantIds:[]}),/IDENTITY_ALREADY_DISABLED/));
 test("non-mover event cannot carry grant selections",()=>assert.throws(()=>planLifecycleTransition({type:"JOINER",identityStatus:"PENDING",activeGrantIds:[],selectedGrantIds:["a"]}),/GRANTS_ONLY_FOR_MOVER/));
+
+test("lifecycle requester cannot approve their own request",async()=>{
+ const {isIndependentApprover}=await import("../apps/web/lib/lifecycle-policy.mjs");
+ assert.equal(isIndependentApprover({requesterUserId:"user-a",approverUserId:"user-a"}),false);
+});
+test("a different authorized reviewer can approve a lifecycle request",async()=>{
+ const {isIndependentApprover}=await import("../apps/web/lib/lifecycle-policy.mjs");
+ assert.equal(isIndependentApprover({requesterUserId:"user-a",approverUserId:"user-b"}),true);
+});
