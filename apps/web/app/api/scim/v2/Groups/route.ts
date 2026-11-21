@@ -10,7 +10,7 @@ export async function GET(request:Request){
  const filter=url.searchParams.get("filter");let externalId:string|undefined;
  if(filter){const match=filter.match(/^\s*displayName\s+eq\s+"([^"]{1,200})"\s*$/i);if(!match)return scimError(400,"Only exact displayName equality is supported.","invalidFilter");externalId=match[1];}
  const where={organizationId:connector.organizationId,connectorId:connector.id,...(externalId?{displayName:externalId}:{})};
- const [total,groups]=await Promise.all([prisma.scimGroup.count({where}),prisma.scimGroup.findMany({where,include:{members:{select:{identityId:true}}},orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]);
+ const [total,groups]=await Promise.all([prisma.scimGroup.count({where}),prisma.scimGroup.findMany({where,include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}},orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]);
  return NextResponse.json({schemas:["urn:ietf:params:scim:api:messages:2.0:ListResponse"],totalResults:total,startIndex,itemsPerPage:groups.length,Resources:groups.map(g=>({schemas:["urn:ietf:params:scim:schemas:core:2.0:Group"],id:g.id,externalId:g.externalId,displayName:g.displayName,members:g.members.map(m=>({value:m.identityId,type:"User"})),meta:{resourceType:"Group",created:g.createdAt.toISOString(),lastModified:g.updatedAt.toISOString()}}))},{headers:{"Content-Type":"application/scim+json"}});
 }
 export async function POST(request:Request){

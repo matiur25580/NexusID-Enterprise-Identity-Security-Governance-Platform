@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { evaluateAccessPolicy } from "@/lib/policy-engine";
 export async function syncGroupAccessRequests(groupId:string,connector:{id:string;organizationId:string;createdById:string}){
- const group=await prisma.scimGroup.findFirst({where:{id:groupId,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{include:{identity:true}},mappings:{where:{enabled:true},include:{entitlement:true}}}});
+ const group=await prisma.scimGroup.findFirst({where:{id:groupId,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},include:{identity:true}},mappings:{where:{enabled:true,organizationId:connector.organizationId},include:{entitlement:true}}}});
  if(!group)return;
  const policies=await prisma.policyRule.findMany({where:{organizationId:connector.organizationId,enabled:true},orderBy:[{priority:"asc"},{key:"asc"}]});
  for(const member of group.members){
   for(const mapping of group.mappings){
    const identity=member.identity,entitlement=mapping.entitlement;
+   if(identity.organizationId!==connector.organizationId||identity.source!=="SCIM:"+connector.id||entitlement.organizationId!==connector.organizationId)continue;
    const [active,pending]=await Promise.all([
     prisma.accessGrant.findFirst({where:{organizationId:connector.organizationId,identityId:identity.id,entitlementId:entitlement.id,status:"ACTIVE"},select:{id:true}}),
     prisma.accessRequest.findFirst({where:{organizationId:connector.organizationId,identityId:identity.id,entitlementId:entitlement.id,status:"PENDING"},select:{id:true}})
