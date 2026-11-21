@@ -8,7 +8,7 @@ export function scimError(status:number,detail:string,type="invalidValue"){
 }
 export async function authenticateScim(request:Request){
  const header=request.headers.get("authorization")??"";
- const match=header.match(/^Bearer\\s+(\\S+)$/i);
+ const match=header.match(/^Bearer\s+(\S+)$/i);
  if(!match||match[1].length>256)return null;
  const tokenHash=createHash("sha256").update(match[1]).digest("hex");
  const connector=await prisma.scimConnector.findUnique({where:{tokenHash},select:{id:true,organizationId:true,enabled:true}});

@@ -2,7 +2,7 @@
 
 ## Scope and protocol
 
-NexusID exposes an inbound SCIM 2.0 Users service-provider API under /api/scim/v2. This initial release supports Users collection GET/POST and individual User GET/PUT/PATCH/DELETE. Responses use SCIM 2.0 schemas and application/scim+json. List pagination supports startIndex and count; supported filters are exact userName equality and externalId equality only.
+NexusID exposes an inbound SCIM 2.0 Users service-provider API under /api/scim/v2. This initial release supports ServiceProviderConfig, ResourceTypes, Schemas metadata plus Users collection GET/POST and individual User GET/PUT/PATCH/DELETE. Responses use SCIM 2.0 schemas and application/scim+json. List pagination supports startIndex and count; supported filters are exact userName equality and externalId equality only.
 
 ## Connector credentials
 
@@ -16,7 +16,7 @@ SCIM active=true maps to ACTIVE; active=false or DELETE maps to DISABLED. Deacti
 
 ## Isolation and audit
 
-Every API operation authenticates a connector token and scopes identity reads/writes to that connector's organization. A valid connector cannot access another tenant's user by guessing its ID. Connector create/revoke and user create/update/deactivate events are audited. Raw credentials are never persisted or returned after initial creation.
+Every API operation authenticates a connector token and scopes identity reads/writes to that connector's organization and identities provisioned by that connector. A valid connector cannot list or modify another connector's users or another tenant's users by guessing an ID. Connector create/revoke and user create/update/deactivate events are audited. Raw credentials are never persisted or returned after initial creation.
 
 ## Current limitations
 

@@ -6,7 +6,7 @@ export const runtime="nodejs";
 type Context={params:Promise<{id:string}>};
 async function load(request:Request,id:string){
  const connector=await authenticateScim(request);if(!connector)return {error:scimError(401,"A valid SCIM bearer token is required.","invalidCredentials")} as const;
- const identity=await prisma.identity.findFirst({where:{id,organizationId:connector.organizationId}});
+ const identity=await prisma.identity.findFirst({where:{id,organizationId:connector.organizationId,source:"SCIM:"+connector.id}});
  if(!identity)return {error:scimError(404,"SCIM User not found.")} as const;
  return {connector,identity} as const;
 }
@@ -15,7 +15,7 @@ export async function GET(request:Request,{params}:Context){
  return NextResponse.json(toScimUser(result.identity,request),{headers:{"Content-Type":"application/scim+json"}});
 }
 async function persist(request:Request,id:string,connectorId:string,organizationId:string,next:{userName:string;externalId:string|null;displayName:string;email:string|null;active:boolean}){
- const current=await prisma.identity.findFirst({where:{id,organizationId}});if(!current)return scimError(404,"SCIM User not found.");
+ const current=await prisma.identity.findFirst({where:{id,organizationId,source:"SCIM:"+connectorId}});if(!current)return scimError(404,"SCIM User not found.");
  try{
   const identity=await prisma.$transaction(async tx=>{
    const updated=await tx.identity.update({where:{id},data:{userName:next.userName,externalId:next.externalId,displayName:next.displayName,email:next.email,status:next.active?"ACTIVE":"DISABLED",source:"SCIM:"+connectorId}});

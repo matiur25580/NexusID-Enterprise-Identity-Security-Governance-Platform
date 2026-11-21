@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
-import { hashScimToken } from "@/lib/scim.mjs";
+import { hashScimToken } from "@/lib/scim";
 import { revalidatePath } from "next/cache";
 import { MembershipRole } from "@prisma/client";
 const managers:MembershipRole[]=["OWNER","ADMIN"];

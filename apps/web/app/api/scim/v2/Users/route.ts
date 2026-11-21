@@ -9,7 +9,7 @@ export async function GET(request:Request){
  const url=new URL(request.url);let filter;
  try{filter=parseScimFilter(url.searchParams.get("filter")??"");}catch{return scimError(400,"Only exact userName or externalId equality filters are supported.","invalidFilter");}
  const startIndex=Math.min(100000,Math.max(1,Number(url.searchParams.get("startIndex")??1)||1)),count=Math.min(100,Math.max(1,Number(url.searchParams.get("count")??50)||50));
- const where:Prisma.IdentityWhereInput={organizationId:connector.organizationId,...(filter?{[filter.field]:filter.value}:{})};
+ const where:Prisma.IdentityWhereInput={organizationId:connector.organizationId,source:"SCIM:"+connector.id,...(filter?{[filter.field]:filter.value}:{})};
  const [total,identities]=await Promise.all([prisma.identity.count({where}),prisma.identity.findMany({where,orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]);
  return NextResponse.json({schemas:[SCIM_LIST_SCHEMA],totalResults:total,startIndex,itemsPerPage:identities.length,Resources:identities.map(i=>toScimUser(i,request))},{headers:{"Content-Type":"application/scim+json"}});
 }
