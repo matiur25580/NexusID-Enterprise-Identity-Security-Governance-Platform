@@ -101,7 +101,12 @@ export async function decideCertificationItem(formData: FormData): Promise<void>
 
   await withTenantContext(actor.organizationId, async (tx) => {
     const updated = await tx.certificationItem.updateMany({
-      where: { id: item.id, campaignId: item.campaignId, status: "PENDING" },
+      where: {
+        id: item.id,
+        campaignId: item.campaignId,
+        status: "PENDING",
+        campaign: { organizationId: actor.organizationId, status: "IN_PROGRESS" },
+      },
       data: {
         status: parsed.data.decision,
         reviewerId: actor.userId,
@@ -147,7 +152,7 @@ export async function decideCertificationItem(formData: FormData): Promise<void>
     const remaining = await tx.certificationItem.count({ where: { campaignId: item.campaignId, status: "PENDING" } });
     if (remaining === 0) {
       await tx.certificationCampaign.updateMany({
-        where: { id: item.campaignId, status: "IN_PROGRESS" },
+        where: { id: item.campaignId, organizationId: actor.organizationId, status: "IN_PROGRESS" },
         data: { status: "COMPLETED", completedAt: new Date() },
       });
       await tx.auditEvent.create({
