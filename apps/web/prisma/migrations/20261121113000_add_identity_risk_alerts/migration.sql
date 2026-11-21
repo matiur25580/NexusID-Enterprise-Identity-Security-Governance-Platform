@@ -1,0 +1,6 @@
+CREATE TABLE "IdentityRiskAlert" ("id" TEXT NOT NULL,"organizationId" TEXT NOT NULL,"identityId" TEXT NOT NULL,"alertType" TEXT NOT NULL,"previousScore" INTEGER NOT NULL,"currentScore" INTEGER NOT NULL,"scoreDelta" INTEGER NOT NULL,"capturedOn" DATE NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "IdentityRiskAlert_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "IdentityRiskAlert_organizationId_identityId_alertType_capturedOn_key" ON "IdentityRiskAlert"("organizationId","identityId","alertType","capturedOn");
+CREATE INDEX "IdentityRiskAlert_organizationId_createdAt_idx" ON "IdentityRiskAlert"("organizationId","createdAt");
+CREATE INDEX "IdentityRiskAlert_identityId_createdAt_idx" ON "IdentityRiskAlert"("identityId","createdAt");
+ALTER TABLE "IdentityRiskAlert" ADD CONSTRAINT "IdentityRiskAlert_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "IdentityRiskAlert" ADD CONSTRAINT "IdentityRiskAlert_identityId_fkey" FOREIGN KEY ("identityId") REFERENCES "Identity"("id") ON DELETE CASCADE ON UPDATE CASCADE;

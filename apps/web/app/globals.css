@@ -310,3 +310,5 @@ button{cursor:pointer}
 .risk-history-table{overflow-x:auto}
 .risk-history-panel .directory-empty{padding:22px;text-align:center;color:#8a97a3;font-size:12px}
 @media(max-width:700px){.risk-history-panel .directory-panel-heading{align-items:flex-start;flex-direction:column}.risk-history-panel .directory-panel-heading form{margin-left:0}}
+
+.risk-alert-list{display:grid}.risk-alert-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-top:1px solid #edf1f3}.risk-alert-indicator{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:#fff0e9;color:#bd633c;flex-shrink:0}.risk-alert-copy{display:grid;gap:3px;min-width:0;flex:1}.risk-alert-copy strong{font-size:10px;color:#344454}.risk-alert-copy span{font-size:8px;color:#657483}.risk-alert-copy small{font-size:7px;color:#9aa5af}.risk-alert-delta{font-size:9px;font-weight:750;color:#b75e3d;white-space:nowrap}@media(max-width:600px){.risk-alert-row{align-items:flex-start;flex-wrap:wrap}.risk-alert-delta{margin-left:42px}}

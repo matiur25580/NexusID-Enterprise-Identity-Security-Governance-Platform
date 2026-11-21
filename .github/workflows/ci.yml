@@ -59,6 +59,9 @@ jobs:
       - name: Policy regression tests
         run: pnpm test:policy
 
+      - name: Risk alert regression tests
+        run: pnpm test:risk-alerts
+
       - name: Tenant isolation integration tests
         run: pnpm test:integration
         env:

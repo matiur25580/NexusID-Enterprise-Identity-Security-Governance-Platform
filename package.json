@@ -17,7 +17,8 @@
     "db:generate": "pnpm --filter @nexusid/web exec prisma generate --schema prisma/schema.prisma",
     "db:validate": "pnpm --filter @nexusid/web exec prisma validate --schema prisma/schema.prisma",
     "db:push": "pnpm --filter @nexusid/web exec prisma db push --schema prisma/schema.prisma",
-    "db:migrate": "pnpm --filter @nexusid/web exec prisma migrate dev --schema prisma/schema.prisma"
+    "db:migrate": "pnpm --filter @nexusid/web exec prisma migrate dev --schema prisma/schema.prisma",
+    "test:risk-alerts": "node --test tests/risk-alerts.test.mjs"
   },
   "devDependencies": {
     "prisma": "^6.19.0",

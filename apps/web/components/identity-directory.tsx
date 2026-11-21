@@ -50,13 +50,15 @@ function CreateIdentityForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+type RiskAlertItem = { id: string; identityName: string; identityEmail: string | null; alertType: string; previousScore: number; currentScore: number; scoreDelta: number; createdAt: string };
 type RiskHistoryPoint = { date: string; count: number; averageScore: number; elevated: number; total: number };
 
-export default function IdentityDirectory({ organizationName, role, initialIdentities, riskHistory, canCaptureRiskSnapshot }: {
+export default function IdentityDirectory({ organizationName, role, initialIdentities, riskHistory, riskAlerts, canCaptureRiskSnapshot }: {
   organizationName: string;
   role: string;
   initialIdentities: Identity[];
   riskHistory: RiskHistoryPoint[];
+  riskAlerts: RiskAlertItem[];
   canCaptureRiskSnapshot: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -100,6 +102,7 @@ export default function IdentityDirectory({ organizationName, role, initialIdent
           <article><span className="directory-stat-icon attention"><ShieldAlert size={17} /></span><div><small>Elevated risk (50+)</small><strong>{counts.elevatedRisk.toLocaleString()}</strong></div></article>
         </div>
 
+        <section className="directory-panel risk-alerts-panel"><div className="directory-panel-heading"><div><h2>Risk alerts</h2><p>Escalation signals from scheduled daily assessments</p></div><span className="directory-result-count">{riskAlerts.length} recent</span></div>{riskAlerts.length ? <div className="risk-alert-list">{riskAlerts.map((alert) => <article className="risk-alert-row" key={alert.id}><span className="risk-alert-indicator"><ShieldAlert size={15}/></span><div className="risk-alert-copy"><strong>{alert.identityName}</strong><span>{alert.alertType === "CRITICAL_THRESHOLD" ? "Entered critical risk" : "Risk score increased materially"} · {alert.identityEmail || "No email on record"}</span><small>{new Date(alert.createdAt).toLocaleString()}</small></div><span className="risk-alert-delta">{alert.previousScore} → {alert.currentScore} (+{alert.scoreDelta})</span></article>)}</div> : <div className="directory-empty">No risk escalation alerts recorded yet.</div>}</section>
         <section className="directory-panel risk-history-panel">
           <div className="directory-panel-heading"><div><h2>Identity risk trends</h2><p>Daily point-in-time snapshots · last 30 days · one snapshot per identity per UTC day</p></div>{canCaptureRiskSnapshot && <form action={captureIdentityRiskSnapshots}><button type="submit" className="primary-button">Capture daily snapshot</button></form>}</div>
           {riskHistory.length ? <div className="risk-history-table"><table className="directory-table"><thead><tr><th>Snapshot date</th><th>Identities captured</th><th>Average score</th><th>Elevated risk (50+)</th></tr></thead><tbody>{riskHistory.slice(-14).reverse().map((point) => <tr key={point.date}><td>{new Date(point.date + "T00:00:00Z").toLocaleDateString()}</td><td>{point.count}</td><td><strong>{point.averageScore}</strong> / 100</td><td>{point.elevated}</td></tr>)}</tbody></table></div> : <div className="directory-empty">No risk history yet. An authorized workspace operator can capture the first daily snapshot.</div>}

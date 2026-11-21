@@ -1,0 +1,42 @@
+name: Scheduled identity risk assessment
+
+on:
+  schedule:
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-risk-assessment
+  cancel-in-progress: false
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check schedule configuration
+        id: config
+        env:
+          APP_URL: ${{ secrets.NEXUSID_APP_URL }}
+          SNAPSHOT_SECRET: ${{ secrets.NEXUSID_RISK_SNAPSHOT_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$SNAPSHOT_SECRET" ]; then
+            echo "::warning::Set NEXUSID_APP_URL and NEXUSID_RISK_SNAPSHOT_SECRET repository secrets to enable scheduled risk assessments."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger tenant-scoped risk assessment
+        if: steps.config.outputs.configured == 'true'
+        env:
+          APP_URL: ${{ secrets.NEXUSID_APP_URL }}
+          SNAPSHOT_SECRET: ${{ secrets.NEXUSID_RISK_SNAPSHOT_SECRET }}
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent --show-error \
+            --request POST "${APP_URL%/}/api/internal/risk-snapshots" \
+            --header "Authorization: Bearer $SNAPSHOT_SECRET" \
+            --header "Content-Type: application/json")"
+          echo "$response"

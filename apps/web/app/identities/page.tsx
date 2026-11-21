@@ -9,7 +9,7 @@ export default async function IdentitiesPage() {
   const windowStart = new Date();
   windowStart.setUTCDate(windowStart.getUTCDate() - 29);
   windowStart.setUTCHours(0, 0, 0, 0);
-  const [identities, snapshots] = await Promise.all([
+  const [identities, snapshots, alerts] = await Promise.all([
     prisma.identity.findMany({
       where: { organizationId: context.organization.id },
       orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }], take: 250,
@@ -24,6 +24,7 @@ export default async function IdentitiesPage() {
       orderBy: { capturedOn: "asc" },
       select: { id: true, identityId: true, score: true, level: true, capturedOn: true },
     }),
+    prisma.identityRiskAlert.findMany({ where: { organizationId: context.organization.id }, include: { identity: { select: { displayName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
   const asOf = new Date();
   const daily = new Map<string, { date: string; count: number; averageScore: number; elevated: number; total: number }>();
@@ -40,6 +41,7 @@ export default async function IdentitiesPage() {
     role={context.membership.role}
     canCaptureRiskSnapshot={hasOrganizationRole(context.membership.role, [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.SECURITY_ANALYST])}
     riskHistory={[...daily.values()]}
+    riskAlerts={alerts.map((alert) => ({ id: alert.id, identityName: alert.identity.displayName, identityEmail: alert.identity.email, alertType: alert.alertType, previousScore: alert.previousScore, currentScore: alert.currentScore, scoreDelta: alert.scoreDelta, createdAt: alert.createdAt.toISOString() }))}
     initialIdentities={identities.map((identity) => ({
       ...identity,
       risk: calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt, activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, asOf),
