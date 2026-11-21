@@ -3,7 +3,7 @@
 import { AccessRequestStatus, MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { evaluateAccessPolicy } from "@/lib/policy-engine";
@@ -62,7 +62,7 @@ export async function createApplication(_prev: GovernanceActionState, formData: 
   if (!slug) return { error: "Application name must include letters or numbers." };
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await withTenantContext(actor.organizationId, async (tx) => {
       const app = await tx.application.create({
         data: {
           organizationId: actor.organizationId,
@@ -112,7 +112,7 @@ export async function createEntitlement(_prev: GovernanceActionState, formData: 
   if (!application) return { error: "Choose an application in your workspace." };
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await withTenantContext(actor.organizationId, async (tx) => {
       const entitlement = await tx.entitlement.create({
         data: {
           organizationId: actor.organizationId,
@@ -168,7 +168,7 @@ export async function submitAccessRequest(_prev: GovernanceActionState, formData
     } });
     return { error: evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; ") };
   }
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const request = await tx.accessRequest.create({ data: {
       organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id,
       requesterUserId: actor.userId, requestReason: parsed.data.requestReason,
@@ -229,7 +229,7 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
     if (approvalMustBeBlocked(evaluation.outcome)) throw new Error(evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; "));
   }
 
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const updated = await tx.accessRequest.updateMany({
       where: { id: request.id, organizationId: actor.organizationId, status: "PENDING" },
       data: {
@@ -281,7 +281,7 @@ export async function revokeAccessGrant(formData: FormData): Promise<void> {
   });
   if (!grant) throw new Error("Active access grant not found.");
   await requireOrganizationRole(grant.organizationId, managerRoles);
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     await tx.accessGrant.update({ where: { id: grant.id }, data: { status: "REVOKED", revokedAt: new Date() } });
     await tx.auditEvent.create({
       data: {
