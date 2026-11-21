@@ -1,4 +1,4 @@
-import { prisma, withTenantContext } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import { authenticateScim,scimError } from "@/lib/scim";
 import { normalizeScimGroup } from "@/lib/scim-groups-core.mjs";
 import { syncGroupAccessRequests } from "@/lib/scim-group-sync";
