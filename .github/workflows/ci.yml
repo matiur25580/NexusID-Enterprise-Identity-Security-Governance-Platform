@@ -57,7 +57,7 @@ jobs:
         run: pnpm db:push
 
       - name: Apply tenant relational integrity constraints
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121170000_add_tenant_relational_integrity/migration.sql
+        run: psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121170000_add_tenant_relational_integrity/migration.sql
 
       - name: Policy regression tests
         run: pnpm test:policy
