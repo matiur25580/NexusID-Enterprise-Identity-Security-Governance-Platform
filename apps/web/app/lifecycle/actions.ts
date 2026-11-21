@@ -27,14 +27,8 @@ export async function createLifecycleRequest(formData:FormData):Promise<void>{
  if(!parsed.success)throw new Error("Provide an identity, lifecycle event, a clear reason, and valid grant IDs.");
  const identity=await prisma.identity.findFirst({where:{id:parsed.data.identityId,organizationId:actor.organizationId},select:{id:true,status:true}});
  if(!identity)throw new Error("Identity not found in the active workspace.");
- if(parsed.data.type==="JOINER"&&identity.status!=="PENDING")throw new Error("Joiner approval is only available for a pending identity.");
- if(parsed.data.type==="LEAVER"&&identity.status==="DISABLED")throw new Error("This identity is already disabled.");
- if(parsed.data.type==="MOVER"&&parsed.data.grantIds.length===0)throw new Error("Select at least one grant ID to remove for a mover review.");
- if(parsed.data.type!=="MOVER"&&parsed.data.grantIds.length>0)throw new Error("Grant IDs are only used for mover requests.");
- if(parsed.data.type==="MOVER"){
-  const count=await prisma.accessGrant.count({where:{id:{in:parsed.data.grantIds},organizationId:actor.organizationId,identityId:identity.id,status:"ACTIVE"}});
-  if(count!==parsed.data.grantIds.length)throw new Error("One or more selected grants are not active grants for this identity.");
- }
+ const activeGrants=parsed.data.type==="MOVER"?await prisma.accessGrant.findMany({where:{organizationId:actor.organizationId,identityId:identity.id,status:"ACTIVE"},select:{id:true}}):[];
+ planLifecycleTransition({type:parsed.data.type,identityStatus:identity.status,activeGrantIds:activeGrants.map(g=>g.id),selectedGrantIds:parsed.data.grantIds});
  const pending=await prisma.lifecycleRequest.count({where:{organizationId:actor.organizationId,identityId:identity.id,status:"PENDING"}});
  if(pending)throw new Error("This identity already has a pending lifecycle request.");
  const request=await prisma.$transaction(async tx=>{
