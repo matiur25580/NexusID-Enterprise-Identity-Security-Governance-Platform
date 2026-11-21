@@ -1,6 +1,7 @@
 import { withTenantContext } from "@/lib/prisma";
 import { evaluateAccessPolicy } from "@/lib/policy-engine";
 import { Prisma } from "@prisma/client";
+import { scimGroupRequestMarker } from "@/lib/scim-groups-core.mjs";
 export async function syncGroupAccessRequests(groupId:string,connector:{id:string;organizationId:string;createdById:string}){
  const {group,policies}=await withTenantContext(connector.organizationId, async tx=>({
   group:await tx.scimGroup.findFirst({where:{id:groupId,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},include:{identity:true}},mappings:{where:{enabled:true,organizationId:connector.organizationId},include:{entitlement:true}}}}),
@@ -40,7 +41,7 @@ export async function revokeGroupDerivedAccess(
   let cancelledRequests = 0;
   for (const identityId of identityIds) {
     for (const mapping of group.mappings) {
-      const marker = "SCIM_GROUP:" + group.id + ":" + mapping.entitlementId + ":";
+      const marker = scimGroupRequestMarker(group.id, mapping.entitlementId);
       const requests = await tx.accessRequest.findMany({
         where: { organizationId: connector.organizationId, identityId, entitlementId: mapping.entitlementId, requestReason: { startsWith: marker } },
         select: { id: true },
