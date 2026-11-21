@@ -1,0 +1,51 @@
+import { MembershipRole } from "@prisma/client";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+
+export class AuthorizationError extends Error {
+  constructor(message = "You do not have permission to perform this action.") {
+    super(message);
+    this.name = "AuthorizationError";
+  }
+}
+
+export async function requireOrganizationRole(
+  organizationId: string,
+  allowedRoles: MembershipRole[],
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new AuthorizationError("Authentication required.");
+
+  const membership = await prisma.membership.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId,
+        userId: session.user.id,
+      },
+    },
+    select: { id: true, organizationId: true, userId: true, role: true },
+  });
+
+  if (!membership || !allowedRoles.includes(membership.role)) {
+    throw new AuthorizationError();
+  }
+
+  return membership;
+}
+
+export async function requireCurrentOrganizationRole(allowedRoles: MembershipRole[]) {
+  const session = await auth();
+  if (!session?.user?.id) throw new AuthorizationError("Authentication required.");
+
+  const membership = await prisma.membership.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, organizationId: true, userId: true, role: true },
+  });
+
+  if (!membership || !allowedRoles.includes(membership.role)) {
+    throw new AuthorizationError();
+  }
+
+  return membership;
+}
