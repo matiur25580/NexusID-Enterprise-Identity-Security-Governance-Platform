@@ -59,7 +59,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
           <span>NEXUS<span className="brand-light">ID</span><small>IDENTITY SECURITY</small></span>
         </a>
         <div className="workspace-switch">
-          <div className="workspace-avatar">A</div>
+          <div className="workspace-avatar">{organizationName.slice(0, 1).toUpperCase()}</div>
           <div className="workspace-copy"><strong>{organizationName}</strong><span>Enterprise workspace</span></div>
           <ChevronDown size={15} />
         </div>
@@ -69,14 +69,14 @@ export default function DashboardClient({ userName, organizationName, role }: { 
               <p className="nav-heading">{group.label}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                return <a className={item.active ? "nav-link active" : "nav-link"} href="#" key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
+                return <a className={item.active ? "nav-link active" : "nav-link"} href={item.label === "Identity directory" ? "/identities" : "#"} key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
               })}
             </div>
           ))}
         </nav>
         <div className="sidebar-bottom">
           <div className="security-card"><div className="security-card-icon"><ShieldCheck size={17} /></div><strong>Security posture</strong><span>All core systems operational</span><div className="security-meter"><i /></div><small>Last assessed 8 minutes ago</small></div>
-          <div className="profile"><div className="profile-avatar">MR</div><div><strong>{userName}</strong><span>{role.replaceAll("_", " ").toLowerCase()}</span></div><MoreHorizontal size={18} /></div>
+          <div className="profile"><div className="profile-avatar">{userName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div><div><strong>{userName}</strong><span>{role.replaceAll("_", " ").toLowerCase()}</span></div><MoreHorizontal size={18} /></div>
         </div>
       </aside>
 
@@ -89,7 +89,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
         <div className="content">
           <div className="page-heading">
             <div><div className="eyebrow"><span /> IDENTITY SECURITY OVERVIEW</div><h1>Good morning, {userName.split(" ")[0] || "there"} <span>✦</span></h1><p>Here’s your organization’s identity security posture today.</p></div>
-            <button className="primary-button"><Plus size={16} /> Add identity</button>
+            <a className="primary-button" href="/identities"><Plus size={16} /> Add identity</a>
           </div>
 
           <div className="metric-grid">
