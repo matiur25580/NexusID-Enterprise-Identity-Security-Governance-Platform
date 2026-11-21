@@ -88,7 +88,7 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
         priority: data.priority, version: { increment: 1 }, lastSimulatedAt: null, validatedVersion: null,
       } });
       if (changed.count !== 1) throw new Error("This policy changed in another session. Reload it and try again.");
-      const updated = await tx.policyRule.findUniqueOrThrow({ where: { id: existing.id } });
+      const updated = await tx.policyRule.findFirstOrThrow({ where: { id: existing.id, organizationId: actor.organizationId } });
       await tx.policyRuleVersion.create({ data: {
         policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
         changeNote, changedById: actor.userId,
