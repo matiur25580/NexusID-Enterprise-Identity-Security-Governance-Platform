@@ -370,6 +370,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - [Scheduled risk assessments](docs/SCHEDULED_RISK_ASSESSMENTS.md)
 - [SCIM 2.0 provisioning and group entitlement governance](docs/SCIM_PROVISIONING.md)
 - [Tenant relational integrity](docs/TENANT_RELATIONAL_INTEGRITY.md)
+- [Tenant RLS policy foundation (prepared, not activated)](docs/TENANT_RLS_POLICY_FOUNDATION.md)
 - [Tenant isolation hardening: PostgreSQL RLS and authenticated E2E](docs/TENANT_ISOLATION_HARDENING.md)
 
 ## Roadmap
@@ -390,7 +391,8 @@ This is an internal governance workflow, not an external provisioning connector.
 - [ ] Privileged session brokering and time-bound access
 - [ ] Alert acknowledgement and email/chat/SIEM delivery
 - [ ] Audit search/export and tamper-evident evidence storage
-- [x] Core tenant-consistent foreign-key constraints and cross-tenant write regression tests (branch implementation; pending CI validation)
+- [x] Core tenant-consistent foreign-key constraints and cross-tenant write regression tests (CI verified)
+- [x] Fail-closed PostgreSQL RLS policy definitions and transactional isolation regression test (policies prepared; runtime activation pending)
 - [ ] Full authenticated end-to-end tests and PostgreSQL RLS (design and acceptance criteria documented)
 - [ ] Independent security review and production hardening
 
@@ -402,7 +404,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - Alerts are persisted and shown in the directory; notification delivery and acknowledgement are not implemented.
 - SCIM inbound directory synchronization is implemented; outbound account provisioning, downstream deprovisioning and reconciliation are not implemented.
 - No SOC 2, ISO 27001 or other compliance certification is claimed.
-- Tenant isolation currently relies on application-level organization scoping plus core same-tenant relational constraints. PostgreSQL RLS and adversarial runtime-role tests are not implemented. See [tenant relational integrity](docs/TENANT_RELATIONAL_INTEGRITY.md) and [tenant isolation hardening](docs/TENANT_ISOLATION_HARDENING.md).
+- Tenant isolation currently relies on application-level organization scoping plus core same-tenant relational constraints. RLS policy definitions are prepared and tested transactionally but are not enabled for application traffic; runtime tenant-context propagation and restricted-role adversarial tests remain outstanding. See [tenant relational integrity](docs/TENANT_RELATIONAL_INTEGRITY.md), [RLS policy foundation](docs/TENANT_RLS_POLICY_FOUNDATION.md), and [tenant isolation hardening](docs/TENANT_ISOLATION_HARDENING.md).
 
 ## Contributing
 
