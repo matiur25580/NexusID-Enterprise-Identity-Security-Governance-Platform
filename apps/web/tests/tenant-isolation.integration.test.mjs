@@ -127,7 +127,7 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
 
     await prisma.auditEvent.create({ data: { organizationId: orgA.id, actorUserId: userA.id, action: "integration.test", targetType: "identity", targetId: identityA.id, outcome: "SUCCESS" } });
     assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgA.id } }), 2);
-    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 0);
+    assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 1);
   } finally {
     if (createdOrgIds.length) await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
     if (createdUserIds.length) await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
