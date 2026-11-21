@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { authenticateScim, scimError, toScimUser, SCIM_LIST_SCHEMA } from "@/lib/scim";
 import { normalizeScimUser, parseScimFilter } from "@/lib/scim-core.mjs";
 import type { Prisma } from "@prisma/client";
@@ -17,7 +17,7 @@ export async function POST(request:Request){
  const connector=await authenticateScim(request);if(!connector)return scimError(401,"A valid SCIM bearer token is required.","invalidCredentials");
  let payload;try{payload=normalizeScimUser(await request.json());}catch(e){return scimError(400,e instanceof Error?e.message:"Invalid SCIM user payload.");}
  try{
-  const result=await prisma.$transaction(async tx=>{
+  const result=await withTenantContext(connector.organizationId, async tx=>{
    const identity=await tx.identity.create({data:{organizationId:connector.organizationId,externalId:payload.externalId,userName:payload.userName,displayName:payload.displayName,email:payload.email,type:"HUMAN",status:payload.active?"ACTIVE":"DISABLED",source:"SCIM:"+connector.id}});
    await tx.auditEvent.create({data:{organizationId:connector.organizationId,action:"scim.user.created",targetType:"identity",targetId:identity.id,outcome:"SUCCESS",reason:"Identity provisioned through an authenticated SCIM connector.",metadata:{connectorId:connector.id,userName:payload.userName,active:payload.active}}});
    return identity;
