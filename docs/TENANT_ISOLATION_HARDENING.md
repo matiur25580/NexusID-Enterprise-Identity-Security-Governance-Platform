@@ -22,7 +22,7 @@ No database schema, production database, deployment, or credentials are changed 
 - Scheduled risk assessment iterates organizations as a system process.
 - Prisma currently uses ordinary queries; no PostgreSQL RLS policies or tenant-context transaction wrapper were found in the reviewed implementation.
 - The existing tenant integration test manually supplies `organizationId` in Prisma filters. It is useful regression coverage, but it is not an RLS test.
-- Some relations are represented by independent foreign keys. PostgreSQL foreign keys alone do not guarantee that both sides belong to the same organization.
+- Core tenant-owned relationships now have a separate composite-foreign-key implementation on the `security/tenant-relational-integrity` branch. See [TENANT_RELATIONAL_INTEGRITY.md](TENANT_RELATIONAL_INTEGRITY.md). This does not replace RLS and does not yet cover every relation.
 
 ## Target architecture
 
