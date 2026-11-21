@@ -115,7 +115,7 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
     throw new Error("Run a policy simulation after the latest edit before enabling this rule.");
   }
   await prisma.$transaction(async (tx) => {
-    const updated = await tx.policyRule.update({ where: { id: rule.id }, data: { enabled } });
+    const updated = await tx.policyRule.update({ where: { id: rule.id }, data: { enabled, version: { increment: 1 } } });
     await tx.policyRuleVersion.create({ data: {
       policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
       changeNote: enabled ? "Enabled after simulation" : "Disabled by policy manager", changedById: actor.userId,
