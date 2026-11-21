@@ -18,7 +18,7 @@ export async function GET(request:Request,{params}:Context){const {id}=await par
 async function persist(request:Request,id:string,connector:{id:string;organizationId:string;createdById:string},next:{displayName:string;members:string[]}){
  const {identities,old}=await withTenantContext(connector.organizationId, async tx=>({
   identities:await tx.identity.findMany({where:{id:{in:next.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}}),
-  old:await tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{select:{identityId:true}},mappings:{where:{organizationId:connector.organizationId,enabled:true},select:{entitlementId:true}}}})
+  old:await tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{select:{identityId:true}},mappings:{where:{organizationId:connector.organizationId},select:{entitlementId:true}}}})
  }));
  if(identities.length!==next.members.length)return scimError(400,"Every group member must be a User provisioned by this connector.");
  if(!old)return scimError(404,"SCIM Group not found.");
