@@ -62,6 +62,9 @@ jobs:
       - name: Risk alert regression tests
         run: pnpm test:risk-alerts
 
+      - name: Lifecycle regression tests
+        run: pnpm test:lifecycle
+
       - name: Tenant isolation integration tests
         run: pnpm test:integration
         env:

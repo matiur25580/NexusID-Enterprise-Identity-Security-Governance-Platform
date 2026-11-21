@@ -47,7 +47,7 @@ const risks = [
 
 const navGroups = [
   { label: "OVERVIEW", items: [{ label: "Command center", icon: LayoutDashboard, active: true }, { label: "Risk intelligence", icon: Activity }, { label: "Identity graph", icon: Network }] },
-  { label: "GOVERNANCE", items: [{ label: "Identity directory", icon: Users }, { label: "Access governance", icon: CheckCircle2 }, { label: "Access certifications", icon: ClipboardCheck }, { label: "Policy studio", icon: Workflow }, { label: "Privileged access", icon: LockKeyhole }] },
+  { label: "GOVERNANCE", items: [{ label: "Identity directory", icon: Users }, { label: "Identity lifecycle", icon: Workflow }, { label: "Access governance", icon: CheckCircle2 }, { label: "Access certifications", icon: ClipboardCheck }, { label: "Policy studio", icon: Workflow }, { label: "Privileged access", icon: LockKeyhole }] },
   { label: "PLATFORM", items: [{ label: "Integrations", icon: Fingerprint }, { label: "Audit & evidence", icon: KeyRound }] },
 ];
 
@@ -70,7 +70,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
               <p className="nav-heading">{group.label}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                return <a className={item.active ? "nav-link active" : "nav-link"} href={item.label === "Identity directory" ? "/identities" : item.label === "Access governance" ? "/governance" : item.label === "Access certifications" ? "/certifications" : item.label === "Policy studio" ? "/policies" : "#"} key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
+                return <a className={item.active ? "nav-link active" : "nav-link"} href={item.label === "Identity directory" ? "/identities" : item.label === "Identity lifecycle" ? "/lifecycle" : item.label === "Access governance" ? "/governance" : item.label === "Access certifications" ? "/certifications" : item.label === "Policy studio" ? "/policies" : "#"} key={item.label}><Icon size={17} /><span>{item.label}</span>{item.label === "Access reviews" && <span className="nav-count">6</span>}</a>;
               })}
             </div>
           ))}

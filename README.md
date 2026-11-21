@@ -29,6 +29,7 @@ NexusID is a multi-tenant identity security and access-governance platform proto
 - [Database and migrations](#database-and-migrations)
 - [Tests and CI](#tests-and-ci)
 - [Scheduled risk intelligence](#scheduled-risk-intelligence)
+- [Identity lifecycle management](#identity-lifecycle-management)
 - [Documentation](#documentation)
 - [Roadmap](#roadmap)
 - [Known limitations](#known-limitations)
@@ -136,6 +137,7 @@ A future governance surface for AI agents, service principals and workloads, inc
 | Access certification | Implemented | Campaign snapshots, reviewer decisions, certify/revoke |
 | Identity risk | Implemented | Explainable deterministic scoring and daily snapshots |
 | Risk alerts | Implemented | Critical threshold and material score-increase alerts |
+| Identity lifecycle | Implemented | Approval-controlled Joiner, Mover and Leaver workflows with transactional execution and audit events |
 | Tenant integration tests | Implemented | PostgreSQL-backed tenant query and membership-role checks in CI |
 | SCIM/SAML provisioning | Roadmap | No production connector |
 | JIT/PAM sessions | Roadmap | No session broker or credential vault |
@@ -158,6 +160,7 @@ Next.js App Router (apps/web)
        +-- Policy evaluation and simulation
        +-- Certification workflows
        +-- Explainable risk scoring
+       +-- Joiner / Mover / Leaver lifecycle requests
        |
        v
 Prisma (tenant-scoped data access)
@@ -167,7 +170,7 @@ PostgreSQL
        +-- Organizations / memberships / identities
        +-- Applications / entitlements / grants
        +-- Policies / versions / certifications
-       +-- Audit events / risk snapshots / alerts
+       +-- Audit events / risk snapshots / alerts / lifecycle requests
 
 GitHub Actions
        +-- CI and PostgreSQL integration tests
@@ -331,6 +334,18 @@ Configure these GitHub repository Actions secrets:
 
 If secrets are missing, the workflow warns and safely skips. The application must be deployed and reachable for scheduled snapshots to run. External email/chat/SIEM alert delivery is not included.
 
+## Identity lifecycle management
+
+The `/lifecycle` workspace provides approval-controlled identity lifecycle requests:
+
+- **Joiner:** an approver activates an existing PENDING identity.
+- **Mover:** an approver revokes only explicitly selected active grants belonging to that identity.
+- **Leaver:** an approver disables the identity and revokes all of its active grants in one database transaction.
+- Every request and decision records organization-scoped audit evidence and requires a reason.
+- Requests are tenant-scoped, duplicate pending requests for one identity are blocked, and concurrent decisions use conditional updates.
+
+This is an internal governance workflow, not an external provisioning connector. It does not create accounts in third-party directories, update external group memberships, or run automatic retries/reconciliation. A future SCIM connector can consume the approved lifecycle intent through a separately secured integration worker.
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
@@ -353,8 +368,9 @@ If secrets are missing, the workflow warns and safely skips. The application mus
 - [x] Baseline and configurable policy engine with simulation gate
 - [x] Explainable identity risk scoring and daily snapshots
 - [x] Risk escalation detection and scheduled assessment endpoint
+- [x] Approval-controlled Joiner / Mover / Leaver lifecycle workflows
 - [x] PostgreSQL tenant-isolation integration checks in CI
-- [ ] External provisioning and reconciliation
+- [ ] SCIM 2.0 external provisioning and reconciliation
 - [ ] SCIM 2.0 / SAML 2.0 connector framework
 - [ ] Privileged session brokering and time-bound access
 - [ ] Alert acknowledgement and email/chat/SIEM delivery

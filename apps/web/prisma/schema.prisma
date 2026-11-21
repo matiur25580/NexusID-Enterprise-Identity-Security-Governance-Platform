@@ -22,6 +22,18 @@ enum IdentityType {
   AI_AGENT
 }
 
+enum LifecycleEventType {
+  JOINER
+  MOVER
+  LEAVER
+}
+
+enum LifecycleRequestStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
 enum IdentityStatus {
   ACTIVE
   SUSPENDED
@@ -76,6 +88,7 @@ model Organization {
   policyRules PolicyRule[]
   identityRiskSnapshots IdentityRiskSnapshot[]
   identityRiskAlerts IdentityRiskAlert[]
+  lifecycleRequests LifecycleRequest[]
 
   @@index([createdAt])
 }
@@ -98,6 +111,8 @@ model User {
   createdCertifications CertificationCampaign[] @relation("CertificationCreator")
   reviewedCertifications CertificationItem[] @relation("CertificationReviewer")
   changedPolicyVersions PolicyRuleVersion[] @relation("PolicyVersionActor")
+  requestedLifecycleRequests LifecycleRequest[] @relation("LifecycleRequester")
+  decidedLifecycleRequests LifecycleRequest[] @relation("LifecycleDecider")
 }
 
 model Account {
@@ -168,6 +183,7 @@ model Identity {
   accessGrants   AccessGrant[]
   riskSnapshots IdentityRiskSnapshot[]
   riskAlerts IdentityRiskAlert[]
+  lifecycleRequests LifecycleRequest[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId, type, status])
@@ -393,4 +409,26 @@ model IdentityRiskAlert {
   @@unique([organizationId, identityId, alertType, capturedOn])
   @@index([organizationId, createdAt])
   @@index([identityId, createdAt])
+}
+
+model LifecycleRequest {
+  id             String                @id @default(cuid())
+  organizationId String
+  identityId     String
+  requesterUserId String
+  decisionUserId String?
+  type           LifecycleEventType
+  status         LifecycleRequestStatus @default(PENDING)
+  reason         String                @db.Text
+  grantIds       Json?
+  decidedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identity       Identity               @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  requester      User                   @relation("LifecycleRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  decisionUser   User?                  @relation("LifecycleDecider", fields: [decisionUserId], references: [id], onDelete: SetNull)
+  @@index([organizationId, status, createdAt])
+  @@index([identityId, status])
 }
