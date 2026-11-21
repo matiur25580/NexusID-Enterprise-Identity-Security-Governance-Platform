@@ -5,13 +5,13 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const readme = readFileSync(resolve(root, "README.md"), "utf8");
-const pattern = /!\[[^\]]*\]\((https:\/\/raw\.githubusercontent\.com\/matiur25580\/NexusID-Enterprise-Identity-Security-Governance-Platform\/main\/docs\/images\/(dashboard-\d{2}-[a-z0-9-]+\.svg))\)/g;
+const pattern = /!\[[^\]]*\]\((?:https:\/\/raw\.githubusercontent\.com\/matiur25580\/NexusID-Enterprise-Identity-Security-Governance-Platform\/main\/docs\/images\/|docs\/images\/)(dashboard-\d{2}-[a-z0-9-]+\.svg)\)/g;
 const matches = [...readme.matchAll(pattern)];
 assert.equal(matches.length, 12, `Expected exactly 12 direct README dashboard image links; found ${matches.length}.`);
 
 const names = new Set();
 for (const match of matches) {
-  const file = match[2];
+  const file = match[1];
   assert.ok(!names.has(file), `Duplicate dashboard image reference: ${file}`);
   names.add(file);
   const path = resolve(root, "docs/images", file);
