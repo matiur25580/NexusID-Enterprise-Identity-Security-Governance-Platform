@@ -231,8 +231,8 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.accessRequest.update({
-      where: { id: request.id },
+    const updated = await tx.accessRequest.updateMany({
+      where: { id: request.id, organizationId: actor.organizationId, status: "PENDING" },
       data: {
         status: parsed.data.decision,
         decisionUserId: actor.userId,
@@ -240,7 +240,13 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
         decidedAt: new Date(),
       },
     });
+    if (updated.count !== 1) throw new Error("This request was already decided by another reviewer.");
     if (parsed.data.decision === "APPROVED") {
+      const existingGrant = await tx.accessGrant.findFirst({
+        where: { organizationId: actor.organizationId, identityId: request.identityId, entitlementId: request.entitlementId, status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (existingGrant) throw new Error("This identity already has an active grant.");
       await tx.accessGrant.create({
         data: {
           organizationId: actor.organizationId,
