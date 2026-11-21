@@ -1,23 +1,23 @@
 import { getTenantContext } from "@/lib/tenant";
-import { prisma } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import GovernanceConsole from "@/components/governance-console";
 
 export default async function GovernancePage() {
   const context = await getTenantContext();
   const organizationId = context.organization.id;
-  const [applications, identities, requests, grants] = await Promise.all([
-    prisma.application.findMany({
+  const [applications, identities, requests, grants] = await withTenantContext(organizationId, (tx) => Promise.all([
+    tx.application.findMany({
       where: { organizationId },
       include: { entitlements: { where: { enabled: true }, orderBy: { name: "asc" } } },
       orderBy: { name: "asc" },
     }),
-    prisma.identity.findMany({
+    tx.identity.findMany({
       where: { organizationId, status: "ACTIVE" },
       select: { id: true, displayName: true, email: true, type: true },
       orderBy: { displayName: "asc" },
       take: 500,
     }),
-    prisma.accessRequest.findMany({
+    tx.accessRequest.findMany({
       where: { organizationId },
       include: {
         identity: { select: { displayName: true, email: true } },
@@ -28,7 +28,7 @@ export default async function GovernancePage() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    prisma.accessGrant.findMany({
+    tx.accessGrant.findMany({
       where: { organizationId },
       include: {
         identity: { select: { displayName: true, email: true } },
@@ -37,7 +37,7 @@ export default async function GovernancePage() {
       orderBy: { grantedAt: "desc" },
       take: 100,
     }),
-  ]);
+  ]));
 
   return (
     <GovernanceConsole
