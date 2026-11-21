@@ -1,4 +1,4 @@
-import { prisma, withTenantContext } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import { authenticateScim, scimError, toScimUser } from "@/lib/scim";
 import { normalizeScimUser, applyScimPatch } from "@/lib/scim-core.mjs";
 import { NextResponse } from "next/server";
