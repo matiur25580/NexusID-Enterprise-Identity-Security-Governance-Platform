@@ -168,7 +168,7 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
     entitlementEnabled: entitlement.enabled, riskLevel: entitlement.riskLevel, privileged: entitlement.privileged,
     hasActiveGrant: Boolean(activeGrant), hasPendingRequest: Boolean(pendingRequest),
   }, candidates);
-  await withTenantContext(actor.organizationId, async (tx) => {
+  await withTenantContext(membership.organizationId, async (tx) => {
     const simulatedAt = new Date();
     for (const rule of policyRecords) {
       await tx.policyRule.update({ where: { id: rule.id }, data: { lastSimulatedAt: simulatedAt, validatedVersion: rule.version } });
