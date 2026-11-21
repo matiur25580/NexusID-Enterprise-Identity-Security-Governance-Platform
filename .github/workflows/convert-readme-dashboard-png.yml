@@ -21,6 +21,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path in Path("docs/images").glob("dashboard-*.svg"):
+              source = path.read_text()
+              source = re.sub(r"&(?!#\\d+;|#x[0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]+;)", "&amp;", source)
+              path.write_text(source)
+          PY
           for svg in docs/images/dashboard-*.svg; do
             rsvg-convert --width 1200 --height 700 "$svg" --output "${svg%.svg}.png"
           done
