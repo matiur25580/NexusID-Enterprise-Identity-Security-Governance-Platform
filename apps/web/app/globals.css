@@ -290,3 +290,18 @@ button{cursor:pointer}
 .policy-draft-hint{font-size:8px;color:#9a7b43;margin:9px 0 0 40px}
 .policy-validation-note{font-size:8px;color:#8c98a3;line-height:1.6;margin:12px 0 0}
 @media(max-width:700px){.policy-author-form{grid-template-columns:1fr}.policy-form-wide{grid-column:1}.policy-managed-actions{margin-left:0}.policy-draft-hint{margin-left:0}.policy-managed-heading{align-items:flex-start}}
+
+/* Explainable identity risk intelligence */
+.directory-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.identity-risk-detail{position:relative;display:inline-block}
+.identity-risk-detail>summary{list-style:none;cursor:pointer}
+.identity-risk-detail>summary::-webkit-details-marker{display:none}
+.identity-risk-pill{display:inline-flex;align-items:center;border-radius:5px;padding:5px 7px;font-size:8px;font-weight:750;white-space:nowrap;background:#edf5f2;color:#397d69}
+.identity-risk-pill.moderate{background:#fff5e5;color:#a4772f}.identity-risk-pill.high{background:#fff0e9;color:#bd633c}.identity-risk-pill.critical{background:#fdecec;color:#b84747}
+.identity-risk-breakdown{position:absolute;z-index:20;top:26px;left:0;width:260px;max-width:75vw;padding:12px;border:1px solid #e3e9ed;border-radius:8px;background:#fff;box-shadow:0 10px 28px #2433421a;white-space:normal}
+.identity-risk-breakdown>strong{display:block;font-size:9px;color:#344454;margin-bottom:8px}
+.identity-risk-breakdown p{font-size:8px;color:#5f6e7c;line-height:1.45;margin:7px 0}.identity-risk-breakdown p b{color:#b56b36;margin-right:4px}
+.identity-risk-breakdown p small{display:block;color:#8a97a3;font-size:7px;margin-top:2px}
+.identity-risk-breakdown>small{display:block;border-top:1px solid #edf0f2;padding-top:7px;color:#9aa5ae;font-size:7px}
+@media(max-width:900px){.directory-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.identity-risk-breakdown{left:auto;right:0}}

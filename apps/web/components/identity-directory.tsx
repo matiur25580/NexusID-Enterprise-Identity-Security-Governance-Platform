@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ArrowLeft, ChevronDown, CircleAlert, Fingerprint, Plus, Search, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ChevronDown, CircleAlert, Fingerprint, Plus, Search, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { createIdentity, updateIdentityStatus, type IdentityActionState } from "@/app/identities/actions";
 
 type Identity = {
@@ -16,6 +16,7 @@ type Identity = {
   lastSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
+  risk: { score: number; level: "LOW" | "MODERATE" | "HIGH" | "CRITICAL"; factors: { code: string; label: string; points: number; explanation: string }[]; methodology: string };
 };
 
 const initialState: IdentityActionState = {};
@@ -72,6 +73,7 @@ export default function IdentityDirectory({ organizationName, role, initialIdent
     human: initialIdentities.filter((item) => item.type === "HUMAN").length,
     nonHuman: initialIdentities.filter((item) => item.type !== "HUMAN").length,
     attention: initialIdentities.filter((item) => item.status === "PENDING" || item.status === "SUSPENDED").length,
+    elevatedRisk: initialIdentities.filter((item) => item.risk.score >= 50).length,
   };
 
   return (
@@ -91,12 +93,13 @@ export default function IdentityDirectory({ organizationName, role, initialIdent
           <article><span className="directory-stat-icon"><Fingerprint size={17} /></span><div><small>Human identities</small><strong>{counts.human.toLocaleString()}</strong></div></article>
           <article><span className="directory-stat-icon"><ShieldCheck size={17} /></span><div><small>Non-human identities</small><strong>{counts.nonHuman.toLocaleString()}</strong></div></article>
           <article><span className="directory-stat-icon attention"><CircleAlert size={17} /></span><div><small>Needs attention</small><strong>{counts.attention.toLocaleString()}</strong></div></article>
+          <article><span className="directory-stat-icon attention"><ShieldAlert size={17} /></span><div><small>Elevated risk (50+)</small><strong>{counts.elevatedRisk.toLocaleString()}</strong></div></article>
         </div>
 
         {showCreate && <section className="directory-panel"><div className="directory-panel-heading"><div><h2>Add an identity</h2><p>New records start in Pending status until reviewed.</p></div><button className="directory-close" onClick={() => setShowCreate(false)} aria-label="Close">×</button></div><CreateIdentityForm onClose={() => setShowCreate(false)} /></section>}
 
         <section className="directory-panel">
-          <div className="directory-panel-heading"><div><h2>All identities</h2><p>Showing up to 250 most recently updated records</p></div><span className="directory-result-count">{filtered.length} results</span></div>
+          <div className="directory-panel-heading"><div><h2>All identities</h2><p>Showing up to 250 most recently updated records · risk reflects active grants and identity signals</p></div><span className="directory-result-count">{filtered.length} results</span></div>
           <div className="directory-filters">
             <label className="directory-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, external ID…" /></label>
             <label className="directory-select"><span>Type</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="ALL">All types</option><option value="HUMAN">Human</option><option value="SERVICE">Service</option><option value="WORKLOAD">Workload</option><option value="AI_AGENT">AI agent</option></select><ChevronDown size={13} /></label>
@@ -104,17 +107,18 @@ export default function IdentityDirectory({ organizationName, role, initialIdent
           </div>
           <div className="directory-table-wrap">
             <table className="directory-table">
-              <thead><tr><th>Identity</th><th>Type</th><th>Status</th><th>Source</th><th>Last updated</th>{canManage && <th>Actions</th>}</tr></thead>
+              <thead><tr><th>Identity</th><th>Type</th><th>Status</th><th>Risk</th><th>Source</th><th>Last updated</th>{canManage && <th>Actions</th>}</tr></thead>
               <tbody>
                 {filtered.map((identity) => <tr key={identity.id}>
                   <td><strong>{identity.displayName}</strong><span>{identity.email || identity.externalId || "No email or external ID"}</span></td>
                   <td><span className="identity-type">{typeLabels[identity.type]}</span></td>
                   <td><span className={"identity-status " + identity.status.toLowerCase()}><i />{identity.status.toLowerCase()}</span></td>
+                  <td><details className="identity-risk-detail"><summary><span className={"identity-risk-pill " + identity.risk.level.toLowerCase()}>{identity.risk.score} · {identity.risk.level}</span></summary><div className="identity-risk-breakdown"><strong>Why this score?</strong>{identity.risk.factors.length ? identity.risk.factors.map((factor) => <p key={factor.code}><b>+{factor.points}</b> {factor.label}<small>{factor.explanation}</small></p>) : <p>No elevated risk signals were identified from the available data.</p>}<small>Deterministic heuristic · {identity.risk.methodology.replaceAll("_", " ")}</small></div></details></td>
                   <td>{identity.source || "—"}</td>
                   <td>{new Date(identity.updatedAt).toLocaleDateString()}</td>
                   {canManage && <td><form action={updateIdentityStatus} className="identity-status-form"><input type="hidden" name="identityId" value={identity.id} /><select name="status" defaultValue={identity.status} aria-label={"Update status for " + identity.displayName}><option value="PENDING">Pending</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option><option value="DISABLED">Disabled</option></select><button type="submit">Save</button></form></td>}
                 </tr>)}
-                {filtered.length === 0 && <tr><td colSpan={canManage ? 6 : 5} className="directory-empty">No identities match these filters. Try a different search or add an identity.</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={canManage ? 7 : 6} className="directory-empty">No identities match these filters. Try a different search or add an identity.</td></tr>}
               </tbody>
             </table>
           </div>

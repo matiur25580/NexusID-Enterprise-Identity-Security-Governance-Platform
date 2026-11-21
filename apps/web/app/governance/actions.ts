@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { evaluateAccessPolicy } from "@/lib/policy-engine";
+import { approvalMustBeBlocked } from "@/lib/policy-guards";
 
 const managerRoles: MembershipRole[] = ["OWNER", "ADMIN", "SECURITY_ANALYST"];
 export type GovernanceActionState = { error?: string; success?: string };
@@ -225,7 +226,7 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
       privileged: request.entitlement.privileged,
       hasActiveGrant: Boolean(activeGrant),
     }, activePolicies);
-    if (evaluation.outcome === "DENY") throw new Error(evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; "));
+    if (approvalMustBeBlocked(evaluation.outcome)) throw new Error(evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; "));
   }
 
   await prisma.$transaction(async (tx) => {

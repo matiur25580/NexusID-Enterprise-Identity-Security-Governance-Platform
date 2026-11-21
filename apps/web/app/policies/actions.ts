@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { evaluateAccessPolicy, type ConfigurablePolicyRule } from "@/lib/policy-engine";
+import { hasFreshPolicySimulation, tenantScopedWhere } from "@/lib/policy-guards";
 
 const policyManagers: MembershipRole[] = ["OWNER", "ADMIN", "SECURITY_ANALYST"];
 export type PolicySimulationState = { error?: string; result?: { outcome: string; summary: string; rules: { code: string; title: string; severity: string; outcome: string; explanation: string; source?: string }[] } };
@@ -115,7 +116,7 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
   const rule = await prisma.policyRule.findFirst({ where: { id: parsed.data.ruleId, organizationId: actor.organizationId } });
   if (!rule) throw new Error("Policy rule not found.");
   const enabled = parsed.data.enabled === "true";
-  if (enabled && rule.validatedVersion !== rule.version) {
+  if (enabled && !hasFreshPolicySimulation(rule)) {
     throw new Error("Run a policy simulation after the latest edit before enabling this rule.");
   }
   await prisma.$transaction(async (tx) => {
@@ -152,9 +153,9 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
   });
   if (!parsed.success) return { error: "Choose an identity and entitlement." };
   const [identity, entitlement, policyRecords] = await Promise.all([
-    prisma.identity.findFirst({ where: { id: parsed.data.identityId, organizationId: membership.organizationId }, select: { id: true, status: true, type: true, email: true } }),
-    prisma.entitlement.findFirst({ where: { id: parsed.data.entitlementId, organizationId: membership.organizationId }, select: { id: true, enabled: true, riskLevel: true, privileged: true } }),
-    prisma.policyRule.findMany({ where: { organizationId: membership.organizationId }, orderBy: [{ priority: "asc" }, { key: "asc" }] }),
+    prisma.identity.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.identityId }), select: { id: true, status: true, type: true, email: true } }),
+    prisma.entitlement.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.entitlementId }), select: { id: true, enabled: true, riskLevel: true, privileged: true } }),
+    prisma.policyRule.findMany({ where: tenantScopedWhere(membership.organizationId, {}), orderBy: [{ priority: "asc" }, { key: "asc" }] }),
   ]);
   if (!identity || !entitlement) return { error: "The selected resources do not belong to this workspace." };
   const [activeGrant, pendingRequest] = await Promise.all([

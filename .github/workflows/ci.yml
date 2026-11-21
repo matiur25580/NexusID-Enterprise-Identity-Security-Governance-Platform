@@ -39,6 +39,9 @@ jobs:
       - name: Validate Prisma schema
         run: pnpm db:validate
 
+      - name: Policy regression tests
+        run: pnpm test:policy
+
       - name: Typecheck
         run: pnpm typecheck
 

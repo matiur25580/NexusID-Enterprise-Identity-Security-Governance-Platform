@@ -88,12 +88,17 @@ docs/
 - [x] Configurable tenant policy rules, simulation gates and version history
 - [ ] Integration, security and end-to-end test suites
 
+## Quality checks
+
+Run the deterministic policy regression suite with `pnpm test:policy`. It covers baseline precedence, custom rule matching/order, invalid persisted rule data, exact-version activation gating, approval blocking semantics and tenant-scope query construction.
+
 ## Policy and governance documentation
 
 - [Access governance](docs/ACCESS_GOVERNANCE.md)
 - [Access certifications](docs/ACCESS_CERTIFICATIONS.md)
 - [Baseline policy engine](docs/POLICY_ENGINE.md)
 - [Configurable policy management](docs/CONFIGURABLE_POLICIES.md)
+- [Identity risk intelligence](docs/IDENTITY_RISK_INTELLIGENCE.md)
 
 ## Security
 
