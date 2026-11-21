@@ -369,6 +369,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - [Tenant tests and risk trends](docs/SECURITY_TESTING_AND_RISK_TRENDS.md)
 - [Scheduled risk assessments](docs/SCHEDULED_RISK_ASSESSMENTS.md)
 - [SCIM 2.0 provisioning and group entitlement governance](docs/SCIM_PROVISIONING.md)
+- [Tenant relational integrity](docs/TENANT_RELATIONAL_INTEGRITY.md)
 - [Tenant isolation hardening: PostgreSQL RLS and authenticated E2E](docs/TENANT_ISOLATION_HARDENING.md)
 
 ## Roadmap
@@ -389,6 +390,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - [ ] Privileged session brokering and time-bound access
 - [ ] Alert acknowledgement and email/chat/SIEM delivery
 - [ ] Audit search/export and tamper-evident evidence storage
+- [x] Core tenant-consistent foreign-key constraints and cross-tenant write regression tests (branch implementation; pending CI validation)
 - [ ] Full authenticated end-to-end tests and PostgreSQL RLS (design and acceptance criteria documented)
 - [ ] Independent security review and production hardening
 
@@ -400,7 +402,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - Alerts are persisted and shown in the directory; notification delivery and acknowledgement are not implemented.
 - SCIM inbound directory synchronization is implemented; outbound account provisioning, downstream deprovisioning and reconciliation are not implemented.
 - No SOC 2, ISO 27001 or other compliance certification is claimed.
-- Tenant isolation currently relies on application-level organization scoping; PostgreSQL RLS, same-tenant relational constraints and adversarial runtime-role tests are not implemented. See [tenant isolation hardening](docs/TENANT_ISOLATION_HARDENING.md).
+- Tenant isolation currently relies on application-level organization scoping plus core same-tenant relational constraints. PostgreSQL RLS and adversarial runtime-role tests are not implemented. See [tenant relational integrity](docs/TENANT_RELATIONAL_INTEGRITY.md) and [tenant isolation hardening](docs/TENANT_ISOLATION_HARDENING.md).
 
 ## Contributing
 
