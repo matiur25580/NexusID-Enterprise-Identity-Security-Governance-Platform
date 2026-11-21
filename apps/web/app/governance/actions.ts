@@ -207,13 +207,19 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
   if (request.status !== AccessRequestStatus.PENDING) throw new Error("This request has already been decided.");
 
   if (parsed.data.decision === "APPROVED") {
-    if (request.identity.status !== "ACTIVE") throw new Error("The identity must be active before access can be granted.");
-    if (!request.entitlement.enabled) throw new Error("This entitlement is disabled and cannot be granted.");
     const activeGrant = await prisma.accessGrant.findFirst({
       where: { organizationId: actor.organizationId, identityId: request.identityId, entitlementId: request.entitlementId, status: "ACTIVE" },
       select: { id: true },
     });
-    if (activeGrant) throw new Error("This identity already has an active grant.");
+    const evaluation = evaluateAccessPolicy({
+      identityStatus: request.identity.status,
+      identityType: request.identity.type,
+      entitlementEnabled: request.entitlement.enabled,
+      riskLevel: request.entitlement.riskLevel,
+      privileged: request.entitlement.privileged,
+      hasActiveGrant: Boolean(activeGrant),
+    });
+    if (evaluation.outcome === "DENY") throw new Error(evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; "));
   }
 
   await prisma.$transaction(async (tx) => {
