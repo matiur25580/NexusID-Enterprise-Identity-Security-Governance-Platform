@@ -64,6 +64,29 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     );
     assert.ok(entitlementA.id);
 
+    const grantA = await prisma.accessGrant.create({
+      data: { organizationId: orgA.id, identityId: identityA.id, entitlementId: entitlementA.id, grantedById: userA.id },
+    });
+    const campaignA = await prisma.certificationCampaign.create({
+      data: { organizationId: orgA.id, name: "Tenant A certification", dueAt: new Date(Date.now() + 86400000), createdById: userA.id },
+    });
+    const itemA = await prisma.certificationItem.create({
+      data: { campaignId: campaignA.id, grantId: grantA.id },
+    });
+
+    const crossTenantItemUpdate = await prisma.certificationItem.updateMany({
+      where: { id: itemA.id, campaignId: campaignA.id, status: "PENDING", campaign: { organizationId: orgB.id, status: "IN_PROGRESS" } },
+      data: { status: "CERTIFIED", reviewerId: userB.id, decisionReason: "Cross-tenant regression attempt", decidedAt: new Date() },
+    });
+    assert.equal(crossTenantItemUpdate.count, 0, "A tenant B reviewer must not mutate a tenant A certification item.");
+    const crossTenantCampaignUpdate = await prisma.certificationCampaign.updateMany({
+      where: { id: campaignA.id, organizationId: orgB.id, status: "IN_PROGRESS" },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+    assert.equal(crossTenantCampaignUpdate.count, 0, "A tenant B context must not complete a tenant A certification campaign.");
+    assert.equal((await prisma.certificationItem.findUnique({ where: { id: itemA.id } })).status, "PENDING");
+    assert.equal((await prisma.certificationCampaign.findUnique({ where: { id: campaignA.id } })).status, "IN_PROGRESS");
+
     // Prove RLS with a real non-owner, non-superuser, non-BYPASSRLS role.
     // All role/table changes are rolled back so CI's schema remains unchanged.
     const rlsRole = "nexusid_rls_" + suffix.replace(/-/g, "");
@@ -129,7 +152,12 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgA.id } }), 2);
     assert.equal(await prisma.auditEvent.count({ where: { organizationId: orgB.id } }), 1);
   } finally {
-    if (createdOrgIds.length) await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
+    // Certification items reference access grants with a restrictive foreign key;
+    // remove tenant-owned review items before cascading organization fixtures.
+    if (createdOrgIds.length) {
+      await prisma.certificationItem.deleteMany({ where: { campaign: { organizationId: { in: createdOrgIds } } } });
+      await prisma.organization.deleteMany({ where: { id: { in: createdOrgIds } } });
+    }
     if (createdUserIds.length) await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await prisma.$disconnect();
   }
