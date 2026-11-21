@@ -7,7 +7,7 @@ export const runtime="nodejs";
 type Context={params:Promise<{id:string}>};
 async function load(request:Request,id:string){
  const connector=await authenticateScim(request);if(!connector)return {error:scimError(401,"A valid SCIM bearer token is required.","invalidCredentials")} as const;
- const group=await withTenantContext(connector.organizationId, tx=>tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}},mappings:{where:{organizationId:connector.organizationId,enabled:true},select:{entitlementId:true}}}}));
+ const group=await withTenantContext(connector.organizationId, tx=>tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}},mappings:{where:{organizationId:connector.organizationId},select:{entitlementId:true}}}}));
  if(!group)return {error:scimError(404,"SCIM Group not found.")} as const;
  return {connector,group} as const;
 }
