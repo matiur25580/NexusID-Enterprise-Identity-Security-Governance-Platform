@@ -79,11 +79,22 @@ docs/
 - [x] Repository and application foundation
 - [x] Initial multi-tenant identity domain schema
 - [x] Authentication, organizations and server-side authorization
-- [x] Identity directory (tenant-scoped CRUD and status governance)\n- [ ] Entitlement catalog
-- [x] Access requests and approvals\n- [x] Certification campaigns
+- [x] Identity directory (tenant-scoped CRUD and status governance)
+- [x] Entitlement catalog
+- [x] Access requests and approvals
+- [x] Certification campaigns
 - [ ] Lifecycle workflows and connector framework
-- [x] Baseline policy evaluation, simulation and audit evidence\n- [x] Configurable tenant policy rules, simulation gates and version history
+- [x] Baseline policy evaluation, simulation and audit evidence
+- [x] Configurable tenant policy rules, simulation gates and version history
+- [x] Configurable tenant policy rules, simulation gates and version history
 - [ ] Integration, security and end-to-end test suites
+
+## Policy and governance documentation
+
+- [Access governance](docs/ACCESS_GOVERNANCE.md)
+- [Access certifications](docs/ACCESS_CERTIFICATIONS.md)
+- [Baseline policy engine](docs/POLICY_ENGINE.md)
+- [Configurable policy management](docs/CONFIGURABLE_POLICIES.md)
 
 ## Security
 
