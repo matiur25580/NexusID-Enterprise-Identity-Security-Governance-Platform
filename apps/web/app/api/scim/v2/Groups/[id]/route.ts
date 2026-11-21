@@ -7,7 +7,7 @@ export const runtime="nodejs";
 type Context={params:Promise<{id:string}>};
 async function load(request:Request,id:string){
  const connector=await authenticateScim(request);if(!connector)return {error:scimError(401,"A valid SCIM bearer token is required.","invalidCredentials")} as const;
- const group=await prisma.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}}});
+ const group=await withTenantContext(connector.organizationId, tx=>tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}}}));
  if(!group)return {error:scimError(404,"SCIM Group not found.")} as const;
  return {connector,group} as const;
 }
@@ -16,9 +16,11 @@ function body(group:{id:string;externalId:string;displayName:string;createdAt:Da
 }
 export async function GET(request:Request,{params}:Context){const {id}=await params;const r=await load(request,id);if("error"in r)return r.error;return NextResponse.json(body(r.group),{headers:{"Content-Type":"application/scim+json"}});}
 async function persist(request:Request,id:string,connector:{id:string;organizationId:string;createdById:string},next:{displayName:string;members:string[]}){
- const identities=await prisma.identity.findMany({where:{id:{in:next.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}});
+ const {identities,old}=await withTenantContext(connector.organizationId, async tx=>({
+  identities:await tx.identity.findMany({where:{id:{in:next.members},organizationId:connector.organizationId,source:"SCIM:"+connector.id},select:{id:true}}),
+  old:await tx.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{select:{identityId:true}}}})
+ }));
  if(identities.length!==next.members.length)return scimError(400,"Every group member must be a User provisioned by this connector.");
- const old=await prisma.scimGroup.findFirst({where:{id,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{select:{identityId:true}}}});
  if(!old)return scimError(404,"SCIM Group not found.");
  const removed=old.members.map(m=>m.identityId).filter(v=>!next.members.includes(v));
  const group=await withTenantContext(connector.organizationId, async tx=>{
