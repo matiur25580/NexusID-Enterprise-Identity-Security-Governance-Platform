@@ -117,6 +117,12 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
       where: { id: identity.id, organizationId: membership.organizationId },
       data: { status: parsed.data.status },
     });
+    const revoked = parsed.data.status === "ACTIVE"
+      ? { count: 0 }
+      : await tx.accessGrant.updateMany({
+          where: { organizationId: membership.organizationId, identityId: identity.id, status: "ACTIVE" },
+          data: { status: "REVOKED", revokedAt: new Date() },
+        });
     await tx.auditEvent.create({
       data: {
         organizationId: identity.organizationId,
@@ -125,13 +131,12 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
         targetType: "identity",
         targetId: identity.id,
         outcome: "SUCCESS",
-        reason: "Identity status updated through the directory.",
         reason: parsed.data.status === "ACTIVE"
           ? "Identity status reactivated; previously revoked grants remain revoked pending a new approval."
           : "Identity status changed to a non-active state and all active access grants were revoked.",
         metadata: { previousStatus: identity.status, newStatus: parsed.data.status, grantsRevoked: revoked.count },
       },
-    });
+    });;
   });
 
   revalidatePath("/identities");
