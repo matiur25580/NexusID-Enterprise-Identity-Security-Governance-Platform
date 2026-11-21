@@ -21,7 +21,8 @@
     "test:risk-alerts": "node --test tests/risk-alerts.test.mjs",
     "test:lifecycle": "node --test tests/lifecycle-regression.test.mjs",
     "test:scim": "node --test tests/scim-core.test.mjs",
-    "test:scim-groups": "node --test tests/scim-groups.test.mjs"
+    "test:scim-groups": "node --test tests/scim-groups.test.mjs",
+    "test:readme-images": "node scripts/check-readme-images.mjs"
   },
   "devDependencies": {
     "prisma": "^6.19.0",
