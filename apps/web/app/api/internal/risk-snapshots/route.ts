@@ -18,9 +18,13 @@ export async function POST(request:NextRequest){
  const organizations=await prisma.organization.findMany({select:{id:true}});
  let captured=0, alertCandidates=0;
  for(const organization of organizations){
-  const identities=await prisma.identity.findMany({where:{organizationId:organization.id},select:{id:true,status:true,type:true,lastSeenAt:true,accessGrants:{where:{organizationId:organization.id,status:"ACTIVE"},select:{entitlement:{select:{riskLevel:true,privileged:true}}}}}});
+  const {identities,previous}=await withTenantContext(organization.id,async tx=>{
+   const scopedIdentities=await tx.identity.findMany({where:{organizationId:organization.id},select:{id:true,status:true,type:true,lastSeenAt:true,accessGrants:{where:{organizationId:organization.id,status:"ACTIVE"},select:{entitlement:{select:{riskLevel:true,privileged:true}}}}}});
+   if(!scopedIdentities.length)return {identities:scopedIdentities,previous:[]};
+   const prior=await tx.identityRiskSnapshot.findMany({where:{organizationId:organization.id,identityId:{in:scopedIdentities.map(x=>x.id)},capturedOn:{lt:capturedOn}},orderBy:{capturedOn:"desc"},select:{identityId:true,score:true}});
+   return {identities:scopedIdentities,previous:prior};
+  });
   if(!identities.length)continue;
-  const previous=await prisma.identityRiskSnapshot.findMany({where:{organizationId:organization.id,identityId:{in:identities.map(x=>x.id)},capturedOn:{lt:capturedOn}},orderBy:{capturedOn:"desc"},select:{identityId:true,score:true}});
   const previousByIdentity=new Map<string,number>();for(const item of previous)if(!previousByIdentity.has(item.identityId))previousByIdentity.set(item.identityId,item.score);
   const snapshots=identities.map(identity=>{const risk=calculateIdentityRisk({status:identity.status,type:identity.type,lastSeenAt:identity.lastSeenAt,activeGrants:identity.accessGrants.map(g=>g.entitlement)},now);return{organizationId:organization.id,identityId:identity.id,score:risk.score,level:risk.level,factors:risk.factors as Prisma.InputJsonArray,methodology:risk.methodology,capturedOn};});
   const alerts=snapshots.flatMap(s=>detectRiskEscalations(previousByIdentity.get(s.identityId)??null,{score:s.score}).map(a=>({...a,organizationId:organization.id,identityId:s.identityId,capturedOn})));
