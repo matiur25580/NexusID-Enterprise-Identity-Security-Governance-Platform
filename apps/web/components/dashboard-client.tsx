@@ -82,7 +82,7 @@ export default function DashboardClient({ userName, organizationName, role }: { 
       <section className="main-panel">
         <header className="topbar">
           <div className="breadcrumbs">Workspace <span>/</span> <strong>Command center</strong></div>
-          <div className="top-actions"><span className="environment"><i /> Production environment</span><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button" aria-label="Notifications"><CircleAlert size={18} /><i className="notification-dot" /></button><div className="top-avatar">{userName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div></div>
+          <div className="top-actions"><span className="environment"><i /> Production environment</span><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button" aria-label="Notifications"><CircleAlert size={18} /><i className="notification-dot" /></button><div className="top-avatar">{userName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div><SignOutButton /></div>
         </header>
 
         <div className="content">
