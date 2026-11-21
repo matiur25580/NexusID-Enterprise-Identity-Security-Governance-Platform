@@ -1,5 +1,6 @@
 "use client";
 
+import SignOutButton from "@/components/sign-out-button";
 import {
   Activity,
   ArrowDownRight,
