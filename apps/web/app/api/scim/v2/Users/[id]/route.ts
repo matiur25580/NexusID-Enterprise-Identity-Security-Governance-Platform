@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { authenticateScim, scimError, toScimUser } from "@/lib/scim";
 import { normalizeScimUser, applyScimPatch } from "@/lib/scim-core.mjs";
 import { NextResponse } from "next/server";
@@ -17,7 +17,7 @@ export async function GET(request:Request,{params}:Context){
 async function persist(request:Request,id:string,connectorId:string,organizationId:string,next:{userName:string;externalId:string|null;displayName:string;email:string|null;active:boolean}){
  const current=await prisma.identity.findFirst({where:{id,organizationId,source:"SCIM:"+connectorId}});if(!current)return scimError(404,"SCIM User not found.");
  try{
-  const identity=await prisma.$transaction(async tx=>{
+  const identity=await withTenantContext(organizationId, async tx=>{
    const updated=await tx.identity.update({where:{id},data:{userName:next.userName,externalId:next.externalId,displayName:next.displayName,email:next.email,status:next.active?"ACTIVE":"DISABLED",source:"SCIM:"+connectorId}});
    let revokedCount=0;
    if(!next.active){const revoked=await tx.accessGrant.updateMany({where:{organizationId,identityId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date()}});revokedCount=revoked.count;}
@@ -43,7 +43,7 @@ export async function PATCH(request:Request,{params}:Context){
 }
 export async function DELETE(request:Request,{params}:Context){
  const {id}=await params;const result=await load(request,id);if("error"in result)return result.error;
- await prisma.$transaction(async tx=>{
+ await withTenantContext(organizationId, async tx=>{
   await tx.identity.update({where:{id},data:{status:"DISABLED",source:"SCIM:"+result.connector.id}});
   const revoked=await tx.accessGrant.updateMany({where:{organizationId:result.connector.organizationId,identityId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date()}});
   await tx.auditEvent.create({data:{organizationId:result.connector.organizationId,action:"scim.user.deactivated",targetType:"identity",targetId:id,outcome:"SUCCESS",reason:"SCIM DELETE deactivated the identity and revoked active grants.",metadata:{connectorId:result.connector.id,grantsRevoked:revoked.count}}});
