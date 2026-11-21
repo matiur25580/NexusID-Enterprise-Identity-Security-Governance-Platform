@@ -44,7 +44,7 @@ export async function PATCH(request:Request,{params}:Context){
 }
 export async function DELETE(request:Request,{params}:Context){
  const {id}=await params,r=await load(request,id);if("error"in r)return r.error;
- await withTenantContext(connector.organizationId, async tx=>{
+ await withTenantContext(r.connector.organizationId, async tx=>{
   await tx.scimGroup.delete({where:{id}});
   await tx.auditEvent.create({data:{organizationId:r.connector.organizationId,actorUserId:r.connector.createdById,action:"scim.group.deleted",targetType:"scim_group",targetId:id,outcome:"SUCCESS",reason:"SCIM group deleted. Existing access requests and grants are not automatically revoked."}});
  });
