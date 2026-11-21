@@ -31,7 +31,7 @@ jobs:
           import re
           readme = Path("README.md")
           content = readme.read_text()
-          content, count = re.subn(r'(docs/images/dashboard-\\d{2}-[a-z0-9-]+)\\.svg\\)', r'\\1.png)', content)
+          content, count = re.subn(r'(docs/images/dashboard-\d{2}-[a-z0-9-]+)\.svg\)', r'\1.png)', content)
           if count != 12:
               raise SystemExit(f"Expected to update 12 dashboard links, updated {count}")
           readme.write_text(content)
@@ -44,7 +44,7 @@ jobs:
 
           const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
           const readme = readFileSync(resolve(root, "README.md"), "utf8");
-          const pattern = /!\\[[^\\]]*\\]\\((?:https:\\/\\/raw\\.githubusercontent\\.com\\/matiur25580\\/NexusID-Enterprise-Identity-Security-Governance-Platform\\/main\\/docs\\/images\\/|docs\\/images\\/)(dashboard-\\d{2}-[a-z0-9-]+\\.png)\\)/g;
+          const pattern = /!\[[^\]]*\]\((?:https:\/\/raw\.githubusercontent\.com\/matiur25580\/NexusID-Enterprise-Identity-Security-Governance-Platform\/main\/docs\/images\/|docs\/images\/)(dashboard-\d{2}-[a-z0-9-]+\.png)\)/g;
           const matches = [...readme.matchAll(pattern)];
           assert.equal(matches.length, 12, `Expected exactly 12 direct README dashboard image links; found ${matches.length}.`);
           const names = new Set();
