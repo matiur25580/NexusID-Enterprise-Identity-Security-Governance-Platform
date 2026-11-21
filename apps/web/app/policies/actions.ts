@@ -79,11 +79,15 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
   if (existing.enabled) return { error: "Disable the policy before editing it. This prevents silent changes to active enforcement." };
   try {
     await prisma.$transaction(async (tx) => {
-      const updated = await tx.policyRule.update({ where: { id: existing.id }, data: {
+      const changed = await tx.policyRule.updateMany({ where: {
+        id: existing.id, organizationId: actor.organizationId, version: existing.version, enabled: false,
+      }, data: {
         key: data.key.toUpperCase(), name: data.name, description: data.description || null,
         effect: data.effect, field: data.field, operator: data.operator, value: data.value,
         priority: data.priority, version: { increment: 1 }, lastSimulatedAt: null, validatedVersion: null,
       } });
+      if (changed.count !== 1) throw new Error("This policy changed in another session. Reload it and try again.");
+      const updated = await tx.policyRule.findUniqueOrThrow({ where: { id: existing.id } });
       await tx.policyRuleVersion.create({ data: {
         policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
         changeNote, changedById: actor.userId,
@@ -115,7 +119,12 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
     throw new Error("Run a policy simulation after the latest edit before enabling this rule.");
   }
   await prisma.$transaction(async (tx) => {
-    const updated = await tx.policyRule.update({ where: { id: rule.id }, data: { enabled, version: { increment: 1 }, validatedVersion: null } });
+    const changed = await tx.policyRule.updateMany({ where: {
+      id: rule.id, organizationId: actor.organizationId, version: rule.version, enabled: rule.enabled,
+      ...(enabled ? { validatedVersion: rule.version } : {}),
+    }, data: { enabled, version: { increment: 1 }, validatedVersion: null } });
+    if (changed.count !== 1) throw new Error("The policy changed or needs a fresh simulation. Reload and try again.");
+    const updated = await tx.policyRule.findUniqueOrThrow({ where: { id: rule.id } });
     await tx.policyRuleVersion.create({ data: {
       policyRuleId: updated.id, version: updated.version, snapshot: snapshot(updated),
       changeNote: enabled ? "Enabled after simulation" : "Disabled by policy manager", changedById: actor.userId,
