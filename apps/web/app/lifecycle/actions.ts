@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
-import { planLifecycleTransition } from "@/lib/lifecycle-policy.mjs";
+import { isIndependentApprover, planLifecycleTransition } from "@/lib/lifecycle-policy.mjs";
 
 const approverRoles: MembershipRole[] = ["OWNER","ADMIN","SECURITY_ANALYST"];
 const requesterRoles: MembershipRole[] = [...approverRoles,"MEMBER"];
@@ -47,6 +47,7 @@ export async function decideLifecycleRequest(formData:FormData):Promise<void>{
  if(!parsed.success)throw new Error("Provide a valid lifecycle request and decision rationale.");
  const request=await withTenantContext(actor.organizationId, tx=>tx.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},include:{identity:{select:{id:true,status:true}}}}));
  if(!request)throw new Error("Pending lifecycle request not found in this workspace.");
+ if(!isIndependentApprover({requesterUserId:request.requesterUserId,approverUserId:actor.userId}))throw new Error("You cannot approve your own lifecycle request.");
  const grantIds=Array.isArray(request.grantIds)&&request.grantIds.every(x=>typeof x==="string")?request.grantIds as string[]:[];
  await withTenantContext(actor.organizationId, async tx=>{
   const claimed=await tx.lifecycleRequest.updateMany({where:{id:request.id,organizationId:actor.organizationId,status:"PENDING"},data:{status:"COMPLETED",decisionUserId:actor.userId,decidedAt:new Date(),completedAt:new Date()}});
