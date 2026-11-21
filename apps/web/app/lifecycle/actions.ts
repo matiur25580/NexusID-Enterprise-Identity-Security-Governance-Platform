@@ -26,11 +26,11 @@ export async function createLifecycleRequest(formData:FormData):Promise<void>{
  const rawGrantIds=String(formData.get("grantIds")??"").split(",").map(x=>x.trim()).filter(Boolean);
  const parsed=createSchema.safeParse({identityId:formData.get("identityId"),type:formData.get("type"),reason:formData.get("reason"),grantIds:rawGrantIds});
  if(!parsed.success)throw new Error("Provide an identity, lifecycle event, a clear reason, and valid grant IDs.");
- const identity=await prisma.identity.findFirst({where:{id:parsed.data.identityId,organizationId:actor.organizationId},select:{id:true,status:true}});
+ const identity=await withTenantContext(actor.organizationId, tx=>tx.identity.findFirst({where:{id:parsed.data.identityId,organizationId:actor.organizationId},select:{id:true,status:true}}));
  if(!identity)throw new Error("Identity not found in the active workspace.");
- const activeGrants=parsed.data.type==="MOVER"?await prisma.accessGrant.findMany({where:{organizationId:actor.organizationId,identityId:identity.id,status:"ACTIVE"},select:{id:true}}):[];
+ const activeGrants=parsed.data.type==="MOVER"?await withTenantContext(actor.organizationId, tx=>tx.accessGrant.findMany({where:{organizationId:actor.organizationId,identityId:identity.id,status:"ACTIVE"},select:{id:true}})):[];
  planLifecycleTransition({type:parsed.data.type,identityStatus:identity.status,activeGrantIds:activeGrants.map(g=>g.id),selectedGrantIds:parsed.data.grantIds});
- const pending=await prisma.lifecycleRequest.count({where:{organizationId:actor.organizationId,identityId:identity.id,status:"PENDING"}});
+ const pending=await withTenantContext(actor.organizationId, tx=>tx.lifecycleRequest.count({where:{organizationId:actor.organizationId,identityId:identity.id,status:"PENDING"}}));
  if(pending)throw new Error("This identity already has a pending lifecycle request.");
  const request=await withTenantContext(actor.organizationId, async tx=>{
   const created=await tx.lifecycleRequest.create({data:{organizationId:actor.organizationId,identityId:identity.id,requesterUserId:actor.userId,type:parsed.data.type,reason:parsed.data.reason,grantIds:parsed.data.grantIds}});
@@ -45,7 +45,7 @@ export async function decideLifecycleRequest(formData:FormData):Promise<void>{
  const actor=await actorContext();await requireOrganizationRole(actor.organizationId,approverRoles);
  const parsed=decisionSchema.safeParse({requestId:formData.get("requestId"),reason:formData.get("reason")});
  if(!parsed.success)throw new Error("Provide a valid lifecycle request and decision rationale.");
- const request=await prisma.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},include:{identity:{select:{id:true,status:true}}}});
+ const request=await withTenantContext(actor.organizationId, tx=>tx.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},include:{identity:{select:{id:true,status:true}}}}));
  if(!request)throw new Error("Pending lifecycle request not found in this workspace.");
  const grantIds=Array.isArray(request.grantIds)&&request.grantIds.every(x=>typeof x==="string")?request.grantIds as string[]:[];
  await withTenantContext(actor.organizationId, async tx=>{
@@ -73,7 +73,7 @@ export async function rejectLifecycleRequest(formData:FormData):Promise<void>{
  const actor=await actorContext();await requireOrganizationRole(actor.organizationId,approverRoles);
  const parsed=decisionSchema.safeParse({requestId:formData.get("requestId"),reason:formData.get("reason")});
  if(!parsed.success)throw new Error("Provide a valid lifecycle request and rejection rationale.");
- const request=await prisma.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},select:{id:true,type:true,identityId:true}});
+ const request=await withTenantContext(actor.organizationId, tx=>tx.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},select:{id:true,type:true,identityId:true}}));
  if(!request)throw new Error("Pending lifecycle request not found.");
  await withTenantContext(actor.organizationId, async tx=>{
   const changed=await tx.lifecycleRequest.updateMany({where:{id:request.id,organizationId:actor.organizationId,status:"PENDING"},data:{status:"REJECTED",decisionUserId:actor.userId,decidedAt:new Date()}});
