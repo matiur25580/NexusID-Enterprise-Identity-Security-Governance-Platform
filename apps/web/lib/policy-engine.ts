@@ -11,7 +11,7 @@ export type ConfigurablePolicyRule = {
   key: string;
   name: string;
   description: string | null;
-  effect: PolicyOutcome;
+  effect: string;
   field: string;
   operator: string;
   value: string;
