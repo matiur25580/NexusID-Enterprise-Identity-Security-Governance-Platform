@@ -8,9 +8,9 @@ This is intentional. Current server actions and route handlers use the shared Pr
 
 ## Runtime context progress
 
-A reusable `withTenantContext(organizationId, work)` helper now opens a Prisma interactive transaction and sets `app.current_organization_id` with transaction-local `set_config(..., true)`. The identity server actions use it for identity creation, status changes, and risk snapshot reads/writes.
+A reusable `withTenantContext(organizationId, work)` helper now opens a Prisma interactive transaction and sets `app.current_organization_id` with transaction-local `set_config(..., true)`. The helper is now used by identity create/status/risk-snapshot actions; governance, policy, certification, lifecycle and SCIM connector server-action write transactions; SCIM Users and Groups write endpoints; SCIM group-access synchronization writes; and the internal scheduled risk-snapshot write transaction.
 
-This is an initial vertical slice, not complete application coverage. Governance, policy, certification, lifecycle, SCIM API routes, page loaders, and scheduled jobs still require conversion and tests before RLS can be activated. Do not enable RLS on a shared or production database based only on this helper's presence.
+This remains a partial rollout, not complete application coverage. Several tenant-scoped read queries in these flows still rely on explicit organization filters rather than a transaction-local RLS context. Other page loaders, route handlers, scheduled/background jobs, and all remaining Prisma access paths still require conversion and tests before RLS can be activated. SCIM endpoints also need adversarial authenticated integration coverage under a restricted runtime role. Do not enable RLS on a shared or production database based only on this helper's presence.
 
 ## Policy contract
 
