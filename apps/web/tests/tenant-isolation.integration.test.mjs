@@ -62,6 +62,38 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     );
     assert.ok(entitlementA.id);
 
+    // Prove the prepared RLS policies enforce isolation when activated.
+    // DDL is rolled back at the end so this test never leaves RLS toggled on
+    // for the shared CI database or changes the application's runtime mode.
+    const rlsTables = [
+      "Identity", "Application", "Entitlement", "AccessRequest", "AccessGrant",
+      "CertificationCampaign", "CertificationItem", "AuditEvent", "PolicyRule",
+      "PolicyRuleVersion", "IdentityRiskSnapshot", "IdentityRiskAlert",
+      "LifecycleRequest", "ScimConnector", "ScimGroup", "ScimGroupMember",
+      "ScimGroupEntitlementMapping",
+    ];
+    const rollbackRls = new Error("ROLLBACK_RLS_POLICY_TEST");
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const table of rlsTables) {
+          await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+          await tx.$executeRawUnsafe(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
+        }
+        await tx.$queryRaw`SELECT set_config('app.current_organization_id', '', true)`;
+        assert.equal(await tx.identity.count(), 0, "RLS must fail closed without tenant context.");
+        await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${orgA.id}, true)`;
+        assert.deepEqual((await tx.identity.findMany({ orderBy: { id: "asc" } })).map((item) => item.id), [identityA.id]);
+        assert.deepEqual((await tx.application.findMany()).map((item) => item.id), [applicationA.id]);
+        assert.deepEqual((await tx.entitlement.findMany()).map((item) => item.id), [entitlementA.id]);
+        await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${orgB.id}, true)`;
+        assert.deepEqual((await tx.identity.findMany()).map((item) => item.id), [identityB.id]);
+        assert.deepEqual((await tx.application.findMany()).map((item) => item.id), [applicationB.id]);
+        throw rollbackRls;
+      });
+    } catch (error) {
+      if (error !== rollbackRls) throw error;
+    }
+
     const visibleToA = await prisma.identity.findMany({ where: { organizationId: orgA.id } });
     assert.deepEqual(visibleToA.map((item) => item.id), [identityA.id]);
     assert.equal(await prisma.identity.findFirst({ where: { id: identityB.id, organizationId: orgA.id } }), null);
