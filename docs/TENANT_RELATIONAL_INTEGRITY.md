@@ -28,7 +28,7 @@ For the current schema-first CI setup, the workflow runs `pnpm db:push` on an ep
 
 ```bash
 pnpm db:push
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121170000_add_tenant_relational_integrity/migration.sql
+psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121170000_add_tenant_relational_integrity/migration.sql
 pnpm test:integration
 ```
 
