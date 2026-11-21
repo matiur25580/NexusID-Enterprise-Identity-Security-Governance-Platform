@@ -1,10 +1,10 @@
 import { getTenantContext } from "@/lib/tenant";
-import { prisma } from "@/lib/prisma";
+import { withTenantContext } from "@/lib/prisma";
 import CertificationConsole from "@/components/certification-console";
 
 export default async function CertificationsPage() {
   const context = await getTenantContext();
-  const campaigns = await prisma.certificationCampaign.findMany({
+  const campaigns = await withTenantContext(context.organization.id, (tx) => tx.certificationCampaign.findMany({
     where: { organizationId: context.organization.id },
     include: {
       createdBy: { select: { name: true, email: true } },
@@ -23,7 +23,7 @@ export default async function CertificationsPage() {
     },
     orderBy: { createdAt: "desc" },
     take: 50,
-  });
+  }));
 
   return <CertificationConsole
     organizationName={context.organization.name}
