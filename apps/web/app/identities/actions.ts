@@ -142,21 +142,21 @@ export async function captureIdentityRiskSnapshots(): Promise<void> {
   });
   if (!membership) throw new Error("No organization workspace was found.");
   await requireOrganizationRole(membership.organizationId, writeRoles);
-  const identities = await prisma.identity.findMany({
-    where: { organizationId: membership.organizationId },
-    select: { id: true, status: true, type: true, lastSeenAt: true,
-      accessGrants: { where: { organizationId: membership.organizationId, status: "ACTIVE" },
-        select: { entitlement: { select: { riskLevel: true, privileged: true } } } } },
-  });
-  const now = new Date();
-  const capturedOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const snapshots = identities.map((identity) => {
-    const risk = calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt,
-      activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, now);
-    return { organizationId: membership.organizationId, identityId: identity.id, score: risk.score,
-      level: risk.level, factors: risk.factors as Prisma.InputJsonArray, methodology: risk.methodology, capturedOn };
-  });
   await withTenantContext(membership.organizationId, async (tx) => {
+    const identities = await tx.identity.findMany({
+      where: { organizationId: membership.organizationId },
+      select: { id: true, status: true, type: true, lastSeenAt: true,
+        accessGrants: { where: { organizationId: membership.organizationId, status: "ACTIVE" },
+          select: { entitlement: { select: { riskLevel: true, privileged: true } } } } },
+    });
+    const now = new Date();
+    const capturedOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const snapshots = identities.map((identity) => {
+      const risk = calculateIdentityRisk({ status: identity.status, type: identity.type, lastSeenAt: identity.lastSeenAt,
+        activeGrants: identity.accessGrants.map((grant) => grant.entitlement) }, now);
+      return { organizationId: membership.organizationId, identityId: identity.id, score: risk.score,
+        level: risk.level, factors: risk.factors as Prisma.InputJsonArray, methodology: risk.methodology, capturedOn };
+    });
     if (snapshots.length) await tx.identityRiskSnapshot.createMany({ data: snapshots, skipDuplicates: true });
     await tx.auditEvent.create({ data: {
       organizationId: membership.organizationId, actorUserId: session.user.id,
