@@ -2,7 +2,7 @@
 import { MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { planLifecycleTransition } from "@/lib/lifecycle-policy.mjs";
@@ -32,7 +32,7 @@ export async function createLifecycleRequest(formData:FormData):Promise<void>{
  planLifecycleTransition({type:parsed.data.type,identityStatus:identity.status,activeGrantIds:activeGrants.map(g=>g.id),selectedGrantIds:parsed.data.grantIds});
  const pending=await prisma.lifecycleRequest.count({where:{organizationId:actor.organizationId,identityId:identity.id,status:"PENDING"}});
  if(pending)throw new Error("This identity already has a pending lifecycle request.");
- const request=await prisma.$transaction(async tx=>{
+ const request=await withTenantContext(actor.organizationId, async tx=>{
   const created=await tx.lifecycleRequest.create({data:{organizationId:actor.organizationId,identityId:identity.id,requesterUserId:actor.userId,type:parsed.data.type,reason:parsed.data.reason,grantIds:parsed.data.grantIds}});
   await tx.auditEvent.create({data:{organizationId:actor.organizationId,actorUserId:actor.userId,action:"lifecycle.request.created",targetType:"lifecycle_request",targetId:created.id,outcome:"SUCCESS",reason:parsed.data.reason,metadata:{identityId:identity.id,type:parsed.data.type,grantCount:parsed.data.grantIds.length}}});
   return created;
@@ -48,7 +48,7 @@ export async function decideLifecycleRequest(formData:FormData):Promise<void>{
  const request=await prisma.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},include:{identity:{select:{id:true,status:true}}}});
  if(!request)throw new Error("Pending lifecycle request not found in this workspace.");
  const grantIds=Array.isArray(request.grantIds)&&request.grantIds.every(x=>typeof x==="string")?request.grantIds as string[]:[];
- await prisma.$transaction(async tx=>{
+ await withTenantContext(actor.organizationId, async tx=>{
   const claimed=await tx.lifecycleRequest.updateMany({where:{id:request.id,organizationId:actor.organizationId,status:"PENDING"},data:{status:"COMPLETED",decisionUserId:actor.userId,decidedAt:new Date(),completedAt:new Date()}});
   if(claimed.count!==1)throw new Error("This request has already been processed.");
   if(request.type==="JOINER"){
@@ -75,7 +75,7 @@ export async function rejectLifecycleRequest(formData:FormData):Promise<void>{
  if(!parsed.success)throw new Error("Provide a valid lifecycle request and rejection rationale.");
  const request=await prisma.lifecycleRequest.findFirst({where:{id:parsed.data.requestId,organizationId:actor.organizationId,status:"PENDING"},select:{id:true,type:true,identityId:true}});
  if(!request)throw new Error("Pending lifecycle request not found.");
- await prisma.$transaction(async tx=>{
+ await withTenantContext(actor.organizationId, async tx=>{
   const changed=await tx.lifecycleRequest.updateMany({where:{id:request.id,organizationId:actor.organizationId,status:"PENDING"},data:{status:"REJECTED",decisionUserId:actor.userId,decidedAt:new Date()}});
   if(changed.count!==1)throw new Error("This request has already been processed.");
   await tx.auditEvent.create({data:{organizationId:actor.organizationId,actorUserId:actor.userId,action:"lifecycle.request.rejected",targetType:"lifecycle_request",targetId:request.id,outcome:"SUCCESS",reason:parsed.data.reason,metadata:{identityId:request.identityId,type:request.type}}});
