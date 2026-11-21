@@ -80,7 +80,7 @@ docs/
 - [x] Initial multi-tenant identity domain schema
 - [x] Authentication, organizations and server-side authorization
 - [x] Identity directory (tenant-scoped CRUD and status governance)\n- [ ] Entitlement catalog
-- [ ] Access requests, approvals and certification campaigns
+- [x] Access requests and approvals\n- [ ] Certification campaigns
 - [ ] Lifecycle workflows and connector framework
 - [ ] Risk scoring, policy simulation and audit evidence
 - [ ] Integration, security and end-to-end test suites
