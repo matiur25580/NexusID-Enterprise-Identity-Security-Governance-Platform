@@ -1,36 +1,37 @@
-# SCIM 2.0 provisioning — initial Users scope
+# SCIM 2.0 Users, Groups and entitlement governance
 
-## Scope and protocol
+## Supported resources
 
-NexusID exposes an inbound SCIM 2.0 Users service-provider API under /api/scim/v2. This initial release supports ServiceProviderConfig, ResourceTypes, Schemas metadata plus Users collection GET/POST and individual User GET/PUT/PATCH/DELETE. Responses use SCIM 2.0 schemas and application/scim+json. List pagination supports startIndex and count; supported filters are exact userName equality and externalId equality only.
+NexusID provides inbound SCIM 2.0 ServiceProviderConfig, ResourceTypes, Schemas, Users and Groups endpoints under /api/scim/v2. Groups support collection GET/POST and individual GET/PUT/PATCH/DELETE. Collection pagination is bounded (maximum 100). Group PATCH supports displayName and members operations; unsupported paths are rejected.
 
-## Connector credentials
+## Group isolation
 
-Only organization OWNER and ADMIN can create/revoke connectors. A generated nxs_scim_ bearer token is shown once; only a SHA-256 digest is stored. Connector records are tenant-bound. Revocation disables the credential immediately. Store tokens in an upstream secret manager and use HTTPS. Rotate by creating a replacement connector, switching the upstream source, then revoking the old connector.
+A group belongs to exactly one SCIM connector. Its members must be identities provisioned by that same connector and organization. A connector cannot attach another connector's users or read/update another connector's groups. Group externalId is unique per connector. Group membership is stored as normalized relational rows, not unvalidated JSON.
 
-## User mapping
+## Entitlement mapping and access controls
 
-SCIM userName maps to the tenant-unique Identity.userName field. externalId remains the upstream stable identifier; displayName and primary email map to the identity directory. SCIM users are created as HUMAN identities. No SCIM operation creates entitlements, access requests or grants.
+Workspace OWNER and ADMIN users can map an inbound group to an enabled NexusID entitlement in the SCIM integration workspace. When group membership is synchronized, NexusID evaluates the same deterministic baseline and enabled custom access policies used by the normal request workflow.
 
-SCIM active=true maps to ACTIVE; active=false or DELETE maps to DISABLED. Deactivation and revocation of all active NexusID grants happen in a single transaction with an audit event. Reactivation changes identity status only; it does not restore previously revoked grants.
+- DENY results create no access request and produce a denial audit event.
+- ALLOW and REVIEW outcomes create a PENDING AccessRequest.
+- The request includes a clear group-mapping rationale and the connector creator as requester for traceability.
+- A human approver must still decide the request. Existing approval-time policy reevaluation and self-approval prevention remain in effect.
+- Duplicate active grants and pending requests are not duplicated.
 
-## Isolation and audit
+Removing a member, deleting a group, or removing a mapping does not automatically revoke active grants or cancel previously created requests. Administrators must use existing governance, certification and lifecycle workflows to make those decisions. This avoids destructive implicit access changes from an upstream group sync.
 
-Every API operation authenticates a connector token and scopes identity reads/writes to that connector's organization and identities provisioned by that connector. A valid connector cannot list or modify another connector's users or another tenant's users by guessing an ID. Connector create/revoke and user create/update/deactivate events are audited. Raw credentials are never persisted or returned after initial creation.
+## Audit and tenant security
 
-## Current limitations
+Group create/update/delete and mapping create/remove events are audited. Every group/member/mapping query is organization and connector scoped. Mapping creation validates that both the group and enabled entitlement belong to the current workspace.
 
-- SCIM Groups and group membership are not implemented.
-- No outbound provisioning client, event outbox, worker, retry/backoff or periodic reconciliation exists.
-- Filter support is deliberately narrow; unsupported filters return 400.
-- Attribute support is intentionally limited to userName, externalId, displayName, active, emails and formatted name.
-- No application-level rate limiter is included. Place an API gateway/WAF with rate limits in front of the endpoint, enforce TLS, and monitor authentication failures before production use.
-- Dedicated end-to-end SCIM API tests against PostgreSQL are not yet included; pure protocol mapping/validation tests and the existing tenant isolation suite run in CI.
+## Outbound provisioning and reconciliation
+
+Not included. This release does not send changes to downstream SaaS applications, manage external API credentials, retry delivery, or reconcile drift. Those capabilities require a separately configured outbound target, credential lifecycle, idempotency strategy, delivery outbox/worker and operational monitoring. Do not interpret inbound SCIM support as outbound provisioning.
 
 ## Database migration
 
-Migration: apps/web/prisma/migrations/20261121133000_add_scim_user_provisioning/migration.sql. It adds nullable Identity.userName with a tenant-scoped unique index and the ScimConnector table. Existing rows remain valid because userName is nullable. Review against the target database, back up and apply in a controlled maintenance/deployment process. Do not use db:push in production.
+Migration: apps/web/prisma/migrations/20261121150000_add_scim_groups_and_entitlement_mappings/migration.sql. It adds ScimGroup, ScimGroupMember and ScimGroupEntitlementMapping. Existing Users and connectors are unchanged. Review and back up the target database, then apply using the controlled Prisma migration process. No live database was modified during development.
 
 ## Verification
 
-Run pnpm test:scim, pnpm db:generate, pnpm db:validate, pnpm test:integration, pnpm typecheck and pnpm build.
+Run pnpm test:scim, pnpm test:scim-groups, pnpm db:generate, pnpm db:validate, pnpm test:integration, pnpm typecheck and pnpm build.

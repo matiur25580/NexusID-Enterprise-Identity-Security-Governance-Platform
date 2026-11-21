@@ -35,3 +35,29 @@ export async function revokeScimConnector(id:string):Promise<void>{
  });
  revalidatePath("/integrations/scim");
 }
+
+export async function createScimGroupMapping(groupId:string,entitlementId:string):Promise<void>{
+ const current=await actor();
+ const parsed=z.object({groupId:z.string().min(1),entitlementId:z.string().min(1)}).safeParse({groupId,entitlementId});
+ if(!parsed.success)throw new Error("Choose a valid SCIM group and entitlement.");
+ const [group,entitlement]=await Promise.all([
+  prisma.scimGroup.findFirst({where:{id:groupId,organizationId:current.organizationId},select:{id:true,connectorId:true,displayName:true}}),
+  prisma.entitlement.findFirst({where:{id:entitlementId,organizationId:current.organizationId,enabled:true},select:{id:true,name:true}})
+ ]);
+ if(!group||!entitlement)throw new Error("Group and enabled entitlement must belong to this workspace.");
+ const mapping=await prisma.scimGroupEntitlementMapping.create({data:{organizationId:current.organizationId,groupId,entitlementId}});
+ await prisma.auditEvent.create({data:{organizationId:current.organizationId,actorUserId:current.userId,action:"scim.group.entitlement_mapping.created",targetType:"scim_group_entitlement_mapping",targetId:mapping.id,outcome:"SUCCESS",metadata:{groupId,entitlementId}}});
+ const connector=await prisma.scimConnector.findFirst({where:{id:group.connectorId,organizationId:current.organizationId,enabled:true},select:{id:true,organizationId:true,createdById:true}});
+ if(connector)await (await import("@/lib/scim-group-sync")).syncGroupAccessRequests(groupId,connector);
+ revalidatePath("/integrations/scim");revalidatePath("/governance");
+}
+export async function removeScimGroupMapping(mappingId:string):Promise<void>{
+ const current=await actor();const parsed=z.string().min(1).safeParse(mappingId);if(!parsed.success)throw new Error("Invalid mapping.");
+ await prisma.$transaction(async tx=>{
+  const mapping=await tx.scimGroupEntitlementMapping.findFirst({where:{id:mappingId,organizationId:current.organizationId},select:{id:true,groupId:true,entitlementId:true}});
+  if(!mapping)throw new Error("Mapping not found in this workspace.");
+  await tx.scimGroupEntitlementMapping.delete({where:{id:mapping.id}});
+  await tx.auditEvent.create({data:{organizationId:current.organizationId,actorUserId:current.userId,action:"scim.group.entitlement_mapping.removed",targetType:"scim_group_entitlement_mapping",targetId:mapping.id,outcome:"SUCCESS",metadata:{groupId:mapping.groupId,entitlementId:mapping.entitlementId},reason:"Mapping removed. Existing pending requests and active grants are not automatically changed."}});
+ });
+ revalidatePath("/integrations/scim");
+}

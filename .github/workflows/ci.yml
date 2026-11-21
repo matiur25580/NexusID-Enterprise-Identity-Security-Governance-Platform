@@ -68,6 +68,9 @@ jobs:
       - name: SCIM protocol regression tests
         run: pnpm test:scim
 
+      - name: SCIM Groups regression tests
+        run: pnpm test:scim-groups
+
       - name: Tenant isolation integration tests
         run: pnpm test:integration
         env:

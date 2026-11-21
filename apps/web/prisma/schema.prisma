@@ -90,6 +90,8 @@ model Organization {
   identityRiskAlerts IdentityRiskAlert[]
   lifecycleRequests LifecycleRequest[]
   scimConnectors ScimConnector[]
+  scimGroups ScimGroup[]
+  scimGroupMappings ScimGroupEntitlementMapping[]
 
   @@index([createdAt])
 }
@@ -187,6 +189,7 @@ model Identity {
   riskSnapshots IdentityRiskSnapshot[]
   riskAlerts IdentityRiskAlert[]
   lifecycleRequests LifecycleRequest[]
+  scimGroupMemberships ScimGroupMember[]
 
   @@unique([organizationId, externalId])
   @@unique([organizationId, userName])
@@ -226,6 +229,7 @@ model Entitlement {
   application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   accessRequests AccessRequest[]
   accessGrants   AccessGrant[]
+  scimGroupMappings ScimGroupEntitlementMapping[]
 
   @@unique([applicationId, key])
   @@index([organizationId, enabled, riskLevel])
@@ -450,5 +454,6 @@ model ScimConnector {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy      User         @relation("ScimConnectorCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  groups         ScimGroup[]
   @@index([organizationId, enabled, createdAt])
 }

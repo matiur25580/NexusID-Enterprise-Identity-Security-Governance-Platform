@@ -20,7 +20,8 @@
     "db:migrate": "pnpm --filter @nexusid/web exec prisma migrate dev --schema prisma/schema.prisma",
     "test:risk-alerts": "node --test tests/risk-alerts.test.mjs",
     "test:lifecycle": "node --test tests/lifecycle-regression.test.mjs",
-    "test:scim": "node --test tests/scim-core.test.mjs"
+    "test:scim": "node --test tests/scim-core.test.mjs",
+    "test:scim-groups": "node --test tests/scim-groups.test.mjs"
   },
   "devDependencies": {
     "prisma": "^6.19.0",

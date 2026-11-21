@@ -367,7 +367,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - [Identity risk intelligence](docs/IDENTITY_RISK_INTELLIGENCE.md)
 - [Tenant tests and risk trends](docs/SECURITY_TESTING_AND_RISK_TRENDS.md)
 - [Scheduled risk assessments](docs/SCHEDULED_RISK_ASSESSMENTS.md)
-- [SCIM 2.0 provisioning](docs/SCIM_PROVISIONING.md)
+- [SCIM 2.0 provisioning and group entitlement governance](docs/SCIM_PROVISIONING.md)
 
 ## Roadmap
 
@@ -381,7 +381,8 @@ This is an internal governance workflow, not an external provisioning connector.
 - [x] Approval-controlled Joiner / Mover / Leaver lifecycle workflows
 - [x] PostgreSQL tenant-isolation integration checks in CI
 - [x] SCIM 2.0 inbound Users provisioning API (initial scope)
-- [ ] SCIM Groups, outbound provisioning and reconciliation worker
+- [x] SCIM Groups inbound synchronization and approval-gated entitlement mappings
+- [ ] Outbound provisioning and reconciliation worker
 - [ ] SCIM 2.0 / SAML 2.0 connector framework
 - [ ] Privileged session brokering and time-bound access
 - [ ] Alert acknowledgement and email/chat/SIEM delivery

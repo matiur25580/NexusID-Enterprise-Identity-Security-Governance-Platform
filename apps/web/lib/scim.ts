@@ -11,7 +11,7 @@ export async function authenticateScim(request:Request){
  const match=header.match(/^Bearer\s+(\S+)$/i);
  if(!match||match[1].length>256)return null;
  const tokenHash=createHash("sha256").update(match[1]).digest("hex");
- const connector=await prisma.scimConnector.findUnique({where:{tokenHash},select:{id:true,organizationId:true,enabled:true}});
+ const connector=await prisma.scimConnector.findUnique({where:{tokenHash},select:{id:true,organizationId:true,enabled:true,createdById:true}});
  if(!connector?.enabled)return null;
  await prisma.scimConnector.update({where:{id:connector.id},data:{lastUsedAt:new Date()}});
  return connector;
