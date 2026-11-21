@@ -282,7 +282,8 @@ export async function revokeAccessGrant(formData: FormData): Promise<void> {
   if (!grant) throw new Error("Active access grant not found.");
   await requireOrganizationRole(grant.organizationId, managerRoles);
   await withTenantContext(actor.organizationId, async (tx) => {
-    await tx.accessGrant.update({ where: { id: grant.id }, data: { status: "REVOKED", revokedAt: new Date() } });
+    const changed = await tx.accessGrant.updateMany({ where: { id: grant.id, organizationId: actor.organizationId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date() } });
+    if (changed.count !== 1) throw new Error("This access grant is no longer active in this workspace.");
     await tx.auditEvent.create({
       data: {
         organizationId: grant.organizationId,
