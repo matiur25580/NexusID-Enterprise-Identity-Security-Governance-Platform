@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
+import { evaluateAccessPolicy } from "@/lib/policy-engine";
 
 const managerRoles: MembershipRole[] = ["OWNER", "ADMIN", "SECURITY_ANALYST"];
 export type GovernanceActionState = { error?: string; success?: string };
@@ -145,56 +146,41 @@ export async function createEntitlement(_prev: GovernanceActionState, formData: 
 export async function submitAccessRequest(_prev: GovernanceActionState, formData: FormData): Promise<GovernanceActionState> {
   const actor = await currentActor();
   if (actor.role === "AUDITOR") return { error: "Auditor accounts cannot request access." };
-  const parsed = requestSchema.safeParse({
-    identityId: formData.get("identityId"),
-    entitlementId: formData.get("entitlementId"),
-    requestReason: formData.get("requestReason"),
-  });
+  const parsed = requestSchema.safeParse({ identityId: formData.get("identityId"), entitlementId: formData.get("entitlementId"), requestReason: formData.get("requestReason") });
   if (!parsed.success) return { error: "Provide an identity, entitlement and a reason of at least 10 characters." };
-
   const [identity, entitlement] = await Promise.all([
-    prisma.identity.findFirst({ where: { id: parsed.data.identityId, organizationId: actor.organizationId }, select: { id: true, status: true } }),
-    prisma.entitlement.findFirst({ where: { id: parsed.data.entitlementId, organizationId: actor.organizationId, enabled: true }, select: { id: true } }),
+    prisma.identity.findFirst({ where: { id: parsed.data.identityId, organizationId: actor.organizationId }, select: { id: true, status: true, type: true } }),
+    prisma.entitlement.findFirst({ where: { id: parsed.data.entitlementId, organizationId: actor.organizationId }, select: { id: true, enabled: true, riskLevel: true, privileged: true } }),
   ]);
-  if (!identity || identity.status !== "ACTIVE") return { error: "Access can only be requested for an active identity in this workspace." };
-  if (!entitlement) return { error: "That entitlement is unavailable in this workspace." };
-
-  const existing = await prisma.accessGrant.findFirst({
-    where: { organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "ACTIVE" },
-    select: { id: true },
-  });
-  if (existing) return { error: "This identity already has an active grant for that entitlement." };
-
-  const pending = await prisma.accessRequest.findFirst({
-    where: { organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "PENDING" },
-    select: { id: true },
-  });
-  if (pending) return { error: "A pending request already exists for this identity and entitlement." };
-
+  if (!identity || !entitlement) return { error: "Choose an identity and entitlement in your workspace." };
+  const [activeGrant, pendingRequest] = await Promise.all([
+    prisma.accessGrant.findFirst({ where: { organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "ACTIVE" }, select: { id: true } }),
+    prisma.accessRequest.findFirst({ where: { organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "PENDING" }, select: { id: true } }),
+  ]);
+  const evaluation = evaluateAccessPolicy({ identityStatus: identity.status, identityType: identity.type, entitlementEnabled: entitlement.enabled, riskLevel: entitlement.riskLevel, privileged: entitlement.privileged, hasActiveGrant: Boolean(activeGrant), hasPendingRequest: Boolean(pendingRequest) });
+  if (evaluation.outcome === "DENY") {
+    await prisma.auditEvent.create({ data: {
+      organizationId: actor.organizationId, actorUserId: actor.userId, action: "policy.access_request.denied",
+      targetType: "policy_evaluation", outcome: "DENIED", reason: evaluation.summary,
+      metadata: { identityId: identity.id, entitlementId: entitlement.id, policyOutcome: evaluation.outcome, matchedRules: evaluation.rules.map((rule) => ({ code: rule.code, explanation: rule.explanation })) },
+    } });
+    return { error: evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; ") };
+  }
   await prisma.$transaction(async (tx) => {
-    const request = await tx.accessRequest.create({
-      data: {
-        organizationId: actor.organizationId,
-        identityId: identity.id,
-        entitlementId: entitlement.id,
-        requesterUserId: actor.userId,
-        requestReason: parsed.data.requestReason,
-      },
-    });
-    await tx.auditEvent.create({
-      data: {
-        organizationId: actor.organizationId,
-        actorUserId: actor.userId,
-        action: "access.requested",
-        targetType: "access_request",
-        targetId: request.id,
-        outcome: "SUCCESS",
-        reason: parsed.data.requestReason,
-      },
-    });
+    const request = await tx.accessRequest.create({ data: {
+      organizationId: actor.organizationId, identityId: identity.id, entitlementId: entitlement.id,
+      requesterUserId: actor.userId, requestReason: parsed.data.requestReason,
+    } });
+    await tx.auditEvent.create({ data: {
+      organizationId: actor.organizationId, actorUserId: actor.userId, action: "access.requested",
+      targetType: "access_request", targetId: request.id, outcome: "SUCCESS", reason: parsed.data.requestReason,
+      metadata: { policyOutcome: evaluation.outcome, policySummary: evaluation.summary, matchedRules: evaluation.rules.map((rule) => ({ code: rule.code, outcome: rule.outcome, explanation: rule.explanation })) },
+    } });
   });
   revalidatePath("/governance");
-  return { success: "Access request submitted for review." };
+  return { success: evaluation.outcome === "REVIEW"
+    ? "Request submitted for explicit human review: " + evaluation.rules.map((rule) => rule.title).join(", ")
+    : "Access request submitted for standard approval." };
 }
 
 const decisionSchema = z.object({
