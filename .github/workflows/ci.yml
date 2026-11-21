@@ -13,6 +13,9 @@ jobs:
   web:
     name: Web checks
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://nexusid:nexusid@localhost:5432/nexusid?schema=public
+      AUTH_SECRET: ci-only-not-a-production-secret
     steps:
       - name: Checkout
         uses: actions/checkout@v4
