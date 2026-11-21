@@ -126,7 +126,10 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
         targetId: identity.id,
         outcome: "SUCCESS",
         reason: "Identity status updated through the directory.",
-        metadata: { previousStatus: identity.status, newStatus: parsed.data.status },
+        reason: parsed.data.status === "ACTIVE"
+          ? "Identity status reactivated; previously revoked grants remain revoked pending a new approval."
+          : "Identity status changed to a non-active state and all active access grants were revoked.",
+        metadata: { previousStatus: identity.status, newStatus: parsed.data.status, grantsRevoked: revoked.count },
       },
     });
   });
