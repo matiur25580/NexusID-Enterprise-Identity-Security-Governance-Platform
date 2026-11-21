@@ -45,7 +45,7 @@ export async function requireCurrentOrganizationRole(allowedRoles: MembershipRol
     select: { id: true, organizationId: true, userId: true, role: true },
   });
 
-  if (!membership || !allowedRoles.includes(membership.role)) {
+  if (!membership || !hasOrganizationRole(membership.role, allowedRoles)) {
     throw new AuthorizationError();
   }
 
