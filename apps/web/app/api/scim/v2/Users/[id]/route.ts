@@ -17,7 +17,7 @@ export async function GET(request:Request,{params}:Context){
 async function persist(request:Request,id:string,connectorId:string,organizationId:string,next:{userName:string;externalId:string|null;displayName:string;email:string|null;active:boolean}){
  const current=await prisma.identity.findFirst({where:{id,organizationId,source:"SCIM:"+connectorId}});if(!current)return scimError(404,"SCIM User not found.");
  try{
-  const identity=await withTenantContext(organizationId, async tx=>{
+  const identity=await withTenantContext(result.connector.organizationId, async tx=>{
    const updated=await tx.identity.update({where:{id},data:{userName:next.userName,externalId:next.externalId,displayName:next.displayName,email:next.email,status:next.active?"ACTIVE":"DISABLED",source:"SCIM:"+connectorId}});
    let revokedCount=0;
    if(!next.active){const revoked=await tx.accessGrant.updateMany({where:{organizationId,identityId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date()}});revokedCount=revoked.count;}
