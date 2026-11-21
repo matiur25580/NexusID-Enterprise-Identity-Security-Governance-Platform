@@ -117,6 +117,18 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
       where: { id: identity.id, organizationId: membership.organizationId },
       data: { status: parsed.data.status },
     });
+    const [revoked, cancelled] = parsed.data.status === "ACTIVE"
+      ? [{ count: 0 }, { count: 0 }]
+      : await Promise.all([
+          tx.accessGrant.updateMany({
+            where: { organizationId: membership.organizationId, identityId: identity.id, status: "ACTIVE" },
+            data: { status: "REVOKED", revokedAt: new Date() },
+          }),
+          tx.accessRequest.updateMany({
+            where: { organizationId: membership.organizationId, identityId: identity.id, status: "PENDING" },
+            data: { status: "CANCELLED" },
+          }),
+        ]);
     await tx.auditEvent.create({
       data: {
         organizationId: identity.organizationId,
@@ -125,8 +137,10 @@ export async function updateIdentityStatus(formData: FormData): Promise<void> {
         targetType: "identity",
         targetId: identity.id,
         outcome: "SUCCESS",
-        reason: "Identity status updated through the directory.",
-        metadata: { previousStatus: identity.status, newStatus: parsed.data.status },
+        reason: parsed.data.status === "ACTIVE"
+          ? "Identity status reactivated; previously revoked grants remain revoked pending a new approval."
+          : "Identity status changed to a non-active state and all active access grants were revoked and pending access requests were cancelled.",
+        metadata: { previousStatus: identity.status, newStatus: parsed.data.status, grantsRevoked: revoked.count, pendingRequestsCancelled: cancelled.count },
       },
     });
   });

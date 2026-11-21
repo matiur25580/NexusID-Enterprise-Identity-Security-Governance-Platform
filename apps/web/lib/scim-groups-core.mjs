@@ -36,3 +36,6 @@ export function applyScimGroupPatch(current,operations){
  return next;
 }
 function normalizeMembers(values){if(!Array.isArray(values)||values.length>1000)throw new Error("INVALID_GROUP_MEMBERS");const ids=values.map(v=>typeof v==="string"?v:v?.value);if(ids.some(v=>typeof v!=="string"||!v.trim()))throw new Error("INVALID_GROUP_MEMBER");return [...new Set(ids.map(v=>v.trim()))];}
+
+export function scimGroupRequestMarker(groupId,entitlementId){return "SCIM_GROUP:"+groupId+":"+entitlementId+":";}
+export function isScimGroupRequestFor(reason,groupId,entitlementId){return typeof reason==="string"&&reason.startsWith(scimGroupRequestMarker(groupId,entitlementId));}
