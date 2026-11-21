@@ -1,0 +1,72 @@
+name: One-time README dashboard PNG conversion
+
+on:
+  push:
+    branches: [fix/readme-dashboard-png-rendering]
+    paths:
+      - .github/workflows/convert-readme-dashboard-png.yml
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/readme-dashboard-png-rendering
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Convert dashboard SVGs to PNG
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+          for svg in docs/images/dashboard-*.svg; do
+            rsvg-convert --width 1200 --height 700 "$svg" --output "${svg%.svg}.png"
+          done
+      - name: Update README and image integrity test
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          readme = Path("README.md")
+          content = readme.read_text()
+          content, count = re.subn(r'(docs/images/dashboard-\\d{2}-[a-z0-9-]+)\\.svg\\)', r'\\1.png)', content)
+          if count != 12:
+              raise SystemExit(f"Expected to update 12 dashboard links, updated {count}")
+          readme.write_text(content)
+          PY
+          cat > scripts/check-readme-images.mjs <<'JS'
+          import assert from "node:assert/strict";
+          import { readFileSync, existsSync } from "node:fs";
+          import { fileURLToPath } from "node:url";
+          import { dirname, resolve } from "node:path";
+
+          const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+          const readme = readFileSync(resolve(root, "README.md"), "utf8");
+          const pattern = /!\\[[^\\]]*\\]\\((?:https:\\/\\/raw\\.githubusercontent\\.com\\/matiur25580\\/NexusID-Enterprise-Identity-Security-Governance-Platform\\/main\\/docs\\/images\\/|docs\\/images\\/)(dashboard-\\d{2}-[a-z0-9-]+\\.png)\\)/g;
+          const matches = [...readme.matchAll(pattern)];
+          assert.equal(matches.length, 12, `Expected exactly 12 direct README dashboard image links; found ${matches.length}.`);
+          const names = new Set();
+          for (const match of matches) {
+            const file = match[1];
+            assert.ok(!names.has(file), `Duplicate dashboard image reference: ${file}`);
+            names.add(file);
+            const path = resolve(root, "docs/images", file);
+            assert.ok(existsSync(path), `README image target does not exist: ${path}`);
+            const png = readFileSync(path);
+            assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], `${file} is not a PNG image`);
+            assert.equal(png.readUInt32BE(16), 1200, `${file} width must be 1200px`);
+            assert.equal(png.readUInt32BE(20), 700, `${file} height must be 700px`);
+          }
+          console.log(`README dashboard gallery OK: ${matches.length} unique 1200x700 PNG files exist.`);
+          JS
+      - name: Commit generated gallery images
+        run: |
+          rm .github/workflows/convert-readme-dashboard-png.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/images/*.png scripts/check-readme-images.mjs
+          git add -u .github/workflows/convert-readme-dashboard-png.yml
+          git commit -m "Render README dashboard gallery as PNG"
+          git push origin HEAD:fix/readme-dashboard-png-rendering
