@@ -35,6 +35,18 @@ enum AuditOutcome {
   DENIED
 }
 
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AccessGrantStatus {
+  ACTIVE
+  REVOKED
+}
+
 model Organization {
   id          String       @id @default(cuid())
   name        String
@@ -43,7 +55,11 @@ model Organization {
   updatedAt   DateTime     @updatedAt
   memberships Membership[]
   identities  Identity[]
-  auditEvents AuditEvent[]
+  auditEvents    AuditEvent[]
+  applications   Application[]
+  entitlements   Entitlement[]
+  accessRequests AccessRequest[]
+  accessGrants   AccessGrant[]
 
   @@index([createdAt])
 }
@@ -60,6 +76,9 @@ model User {
   auditEvents  AuditEvent[] @relation("AuditActor")
   accounts     Account[]
   sessions     Session[]
+  requestedAccess AccessRequest[] @relation("AccessRequester")
+  decidedAccess   AccessRequest[] @relation("AccessDecider")
+  grantedAccess   AccessGrant[]   @relation("GrantActor")
 }
 
 model Account {
@@ -126,10 +145,97 @@ model Identity {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accessRequests AccessRequest[]
+  accessGrants   AccessGrant[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId, type, status])
   @@index([organizationId, email])
+}
+
+model Application {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?      @db.Text
+  ownerTeam      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entitlements   Entitlement[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, name])
+}
+
+model Entitlement {
+  id             String       @id @default(cuid())
+  organizationId String
+  applicationId  String
+  key            String
+  name           String
+  description    String?      @db.Text
+  riskLevel      String       @default("MEDIUM")
+  privileged     Boolean      @default(false)
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  accessRequests AccessRequest[]
+  accessGrants   AccessGrant[]
+
+  @@unique([applicationId, key])
+  @@index([organizationId, enabled, riskLevel])
+  @@index([organizationId, applicationId])
+}
+
+model AccessRequest {
+  id               String              @id @default(cuid())
+  organizationId   String
+  identityId       String
+  entitlementId    String
+  requesterUserId  String
+  decisionUserId   String?
+  status           AccessRequestStatus @default(PENDING)
+  requestReason    String              @db.Text
+  decisionReason   String?             @db.Text
+  decidedAt        DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identity         Identity            @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  entitlement      Entitlement         @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  requester        User                @relation("AccessRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  decisionUser     User?               @relation("AccessDecider", fields: [decisionUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([identityId, entitlementId, status])
+  @@index([requesterUserId, createdAt])
+}
+
+model AccessGrant {
+  id             String           @id @default(cuid())
+  organizationId String
+  identityId     String
+  entitlementId  String
+  requestId      String?          @unique
+  grantedById    String?
+  status         AccessGrantStatus @default(ACTIVE)
+  grantedAt      DateTime         @default(now())
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identity       Identity         @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  entitlement    Entitlement      @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  request        AccessRequest?   @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  grantedBy      User?            @relation("GrantActor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, grantedAt])
+  @@index([identityId, entitlementId, status])
 }
 
 model AuditEvent {
