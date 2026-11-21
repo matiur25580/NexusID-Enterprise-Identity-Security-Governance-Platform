@@ -3,7 +3,7 @@
 import { MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 
@@ -45,7 +45,7 @@ export async function createCertificationCampaign(_prev: ActionState, formData: 
   });
   if (activeGrants.length === 0) return { error: "There are no active grants to certify. Approve access requests first." };
 
-  const campaign = await prisma.$transaction(async (tx) => {
+  const campaign = await withTenantContext(actor.organizationId, async (tx) => {
     const created = await tx.certificationCampaign.create({
       data: {
         organizationId: actor.organizationId,
@@ -99,7 +99,7 @@ export async function decideCertificationItem(formData: FormData): Promise<void>
     throw new Error("This grant is no longer active. Record it as revoked instead.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const updated = await tx.certificationItem.updateMany({
       where: { id: item.id, campaignId: item.campaignId, status: "PENDING" },
       data: {
