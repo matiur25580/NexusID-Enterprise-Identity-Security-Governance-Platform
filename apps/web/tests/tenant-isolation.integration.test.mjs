@@ -62,23 +62,21 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     );
     assert.ok(entitlementA.id);
 
-    // Prove the prepared RLS policies enforce isolation when activated.
-    // DDL is rolled back at the end so this test never leaves RLS toggled on
-    // for the shared CI database or changes the application's runtime mode.
-    const rlsTables = [
-      "Identity", "Application", "Entitlement", "AccessRequest", "AccessGrant",
-      "CertificationCampaign", "CertificationItem", "AuditEvent", "PolicyRule",
-      "PolicyRuleVersion", "IdentityRiskSnapshot", "IdentityRiskAlert",
-      "LifecycleRequest", "ScimConnector", "ScimGroup", "ScimGroupMember",
-      "ScimGroupEntitlementMapping",
-    ];
+    // Prove RLS with a real non-owner, non-superuser, non-BYPASSRLS role.
+    // All role/table changes are rolled back so CI's schema remains unchanged.
+    const rlsRole = "nexusid_rls_" + suffix.replace(/-/g, "");
     const rollbackRls = new Error("ROLLBACK_RLS_POLICY_TEST");
     try {
       await prisma.$transaction(async (tx) => {
-        for (const table of rlsTables) {
+        await tx.$executeRawUnsafe(`CREATE ROLE "${rlsRole}" NOLOGIN NOSUPERUSER NOBYPASSRLS`);
+        for (const table of ["Identity", "Application", "Entitlement"]) {
           await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
           await tx.$executeRawUnsafe(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
+          await tx.$executeRawUnsafe(`GRANT SELECT ON "${table}" TO "${rlsRole}"`);
         }
+        await tx.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public, app TO "${rlsRole}"`);
+        await tx.$executeRawUnsafe(`GRANT EXECUTE ON FUNCTION app.current_organization_id() TO "${rlsRole}"`);
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE "${rlsRole}"`);
         await tx.$queryRaw`SELECT set_config('app.current_organization_id', '', true)`;
         assert.equal(await tx.identity.count(), 0, "RLS must fail closed without tenant context.");
         await tx.$queryRaw`SELECT set_config('app.current_organization_id', ${orgA.id}, true)`;
