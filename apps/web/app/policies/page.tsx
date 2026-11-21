@@ -33,7 +33,7 @@ export default async function PoliciesPage() {
       id: rule.id, key: rule.key, name: rule.name, description: rule.description,
       effect: rule.effect, field: rule.field, operator: rule.operator, value: rule.value,
       priority: rule.priority, enabled: rule.enabled, version: rule.version,
-      lastSimulatedAt: rule.lastSimulatedAt?.toISOString() ?? null,
+      lastSimulatedAt: rule.lastSimulatedAt?.toISOString() ?? null,\n      validatedVersion: rule.validatedVersion,
       updatedAt: rule.updatedAt.toISOString(),
       versions: rule.versions.map((version) => ({
         version: version.version, changeNote: version.changeNote,
