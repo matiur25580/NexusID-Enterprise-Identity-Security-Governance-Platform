@@ -23,7 +23,7 @@ CI applies the policy-definition migration after creating the disposable Postgre
 2. Tenant A context sees only Tenant A identities, applications and entitlements.
 3. Switching the transaction-local context to Tenant B exposes only Tenant B rows.
 
-The test deliberately throws a sentinel error after assertions so PostgreSQL rolls back the DDL and leaves the CI database's RLS activation state unchanged. This tests the real PostgreSQL policies while keeping the current application behavior unchanged.
+The test creates a temporary `NOLOGIN NOSUPERUSER NOBYPASSRLS` role, grants only the required read permissions, and uses `SET LOCAL ROLE` so the checks run under a role that cannot bypass RLS. It deliberately throws a sentinel error after assertions so PostgreSQL rolls back the role, grants and DDL, leaving the CI database's RLS activation state unchanged. This tests the real PostgreSQL policies while keeping the current application behavior unchanged.
 
 ## Required runtime rollout before activation
 
