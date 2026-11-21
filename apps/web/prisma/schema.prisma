@@ -73,6 +73,7 @@ model Organization {
   accessRequests AccessRequest[]
   accessGrants   AccessGrant[]
   certificationCampaigns CertificationCampaign[]
+  policyRules PolicyRule[]
 
   @@index([createdAt])
 }
@@ -94,6 +95,7 @@ model User {
   grantedAccess   AccessGrant[]   @relation("GrantActor")
   createdCertifications CertificationCampaign[] @relation("CertificationCreator")
   reviewedCertifications CertificationItem[] @relation("CertificationReviewer")
+  changedPolicyVersions PolicyRuleVersion[] @relation("PolicyVersionActor")
 }
 
 model Account {
@@ -312,4 +314,43 @@ model AuditEvent {
   @@index([organizationId, targetType, targetId])
   @@index([actorUserId, occurredAt])
   @@index([correlationId])
+}
+
+
+model PolicyRule {
+  id               String   @id @default(cuid())
+  organizationId   String
+  key              String
+  name             String
+  description      String?  @db.Text
+  effect           String
+  field            String
+  operator         String
+  value            String
+  priority         Int      @default(100)
+  enabled          Boolean  @default(false)
+  version          Int      @default(1)
+  lastSimulatedAt  DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions         PolicyRuleVersion[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId, enabled, priority])
+}
+
+model PolicyRuleVersion {
+  id             String   @id @default(cuid())
+  policyRuleId   String
+  version        Int
+  snapshot       Json
+  changeNote     String?
+  changedById    String
+  createdAt      DateTime @default(now())
+  policyRule     PolicyRule @relation(fields: [policyRuleId], references: [id], onDelete: Cascade)
+  changedBy      User @relation("PolicyVersionActor", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@unique([policyRuleId, version])
+  @@index([policyRuleId, createdAt])
 }
