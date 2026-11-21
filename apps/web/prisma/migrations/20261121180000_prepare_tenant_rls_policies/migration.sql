@@ -11,12 +11,12 @@ LANGUAGE sql
 STABLE
 AS $$
   SELECT NULLIF(current_setting('app.current_organization_id', true), '')
-$;
+$$;
 
 GRANT USAGE ON SCHEMA app TO PUBLIC;
 GRANT EXECUTE ON FUNCTION app.current_organization_id() TO PUBLIC;
 
-DO $
+DO $$
 DECLARE
   table_name text;
 BEGIN
