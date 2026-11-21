@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { evaluateAccessPolicy } from "@/lib/policy-engine";
 export async function syncGroupAccessRequests(groupId:string,connector:{id:string;organizationId:string;createdById:string}){
  const group=await prisma.scimGroup.findFirst({where:{id:groupId,organizationId:connector.organizationId,connectorId:connector.id},include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},include:{identity:true}},mappings:{where:{enabled:true,organizationId:connector.organizationId},include:{entitlement:true}}}});
@@ -15,7 +15,7 @@ export async function syncGroupAccessRequests(groupId:string,connector:{id:strin
    if(active||pending)continue;
    const evaluation=evaluateAccessPolicy({identityStatus:identity.status,identityType:identity.type,identityEmail:identity.email,entitlementEnabled:entitlement.enabled,riskLevel:entitlement.riskLevel,privileged:entitlement.privileged,hasActiveGrant:Boolean(active),hasPendingRequest:Boolean(pending)},policies);
    const reason="SCIM group membership mapping: "+group.displayName+" → "+entitlement.name+". A human approver must review this request.";
-   await prisma.$transaction(async tx=>{
+   await withTenantContext(connector.organizationId, async tx=>{
     if(evaluation.outcome==="DENY"){
      await tx.auditEvent.create({data:{organizationId:connector.organizationId,actorUserId:connector.createdById,action:"scim.group.access_request.denied",targetType:"identity",targetId:identity.id,outcome:"DENIED",reason:evaluation.summary,metadata:{connectorId:connector.id,groupId:group.id,entitlementId:entitlement.id,policyRules:evaluation.rules.map(r=>r.code)}}});
      return;
