@@ -75,7 +75,7 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
     .safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: "Check the policy fields and provide a change note of at least 5 characters." };
   const { ruleId, changeNote, ...data } = parsed.data;
-  const existing = await prisma.policyRule.findFirst({ where: { id: ruleId, organizationId: actor.organizationId } });
+  const existing = await withTenantContext(actor.organizationId, (tx) => tx.policyRule.findFirst({ where: { id: ruleId, organizationId: actor.organizationId } }));
   if (!existing) return { error: "Policy rule not found in this workspace." };
   if (existing.enabled) return { error: "Disable the policy before editing it. This prevents silent changes to active enforcement." };
   try {
@@ -113,7 +113,7 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
     ruleId: formData.get("ruleId"), enabled: formData.get("enabled"),
   });
   if (!parsed.success) throw new Error("Invalid policy activation request.");
-  const rule = await prisma.policyRule.findFirst({ where: { id: parsed.data.ruleId, organizationId: actor.organizationId } });
+  const rule = await withTenantContext(actor.organizationId, (tx) => tx.policyRule.findFirst({ where: { id: parsed.data.ruleId, organizationId: actor.organizationId } }));
   if (!rule) throw new Error("Policy rule not found.");
   const enabled = parsed.data.enabled === "true";
   if (enabled && !hasFreshPolicySimulation(rule)) {
@@ -152,16 +152,16 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
     identityId: formData.get("identityId"), entitlementId: formData.get("entitlementId"),
   });
   if (!parsed.success) return { error: "Choose an identity and entitlement." };
-  const [identity, entitlement, policyRecords] = await Promise.all([
-    prisma.identity.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.identityId }), select: { id: true, status: true, type: true, email: true } }),
-    prisma.entitlement.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.entitlementId }), select: { id: true, enabled: true, riskLevel: true, privileged: true } }),
-    prisma.policyRule.findMany({ where: tenantScopedWhere(membership.organizationId, {}), orderBy: [{ priority: "asc" }, { key: "asc" }] }),
-  ]);
+  const [identity, entitlement, policyRecords] = await withTenantContext(membership.organizationId, (tx) => Promise.all([
+    tx.identity.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.identityId }), select: { id: true, status: true, type: true, email: true } }),
+    tx.entitlement.findFirst({ where: tenantScopedWhere(membership.organizationId, { id: parsed.data.entitlementId }), select: { id: true, enabled: true, riskLevel: true, privileged: true } }),
+    tx.policyRule.findMany({ where: tenantScopedWhere(membership.organizationId, {}), orderBy: [{ priority: "asc" }, { key: "asc" }] }),
+  ]));
   if (!identity || !entitlement) return { error: "The selected resources do not belong to this workspace." };
-  const [activeGrant, pendingRequest] = await Promise.all([
-    prisma.accessGrant.findFirst({ where: { organizationId: membership.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "ACTIVE" }, select: { id: true } }),
-    prisma.accessRequest.findFirst({ where: { organizationId: membership.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "PENDING" }, select: { id: true } }),
-  ]);
+  const [activeGrant, pendingRequest] = await withTenantContext(membership.organizationId, (tx) => Promise.all([
+    tx.accessGrant.findFirst({ where: { organizationId: membership.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "ACTIVE" }, select: { id: true } }),
+    tx.accessRequest.findFirst({ where: { organizationId: membership.organizationId, identityId: identity.id, entitlementId: entitlement.id, status: "PENDING" }, select: { id: true } }),
+  ]));
   const candidates: ConfigurablePolicyRule[] = policyRecords.map((rule) => ({ ...rule, enabled: true }));
   const result = evaluateAccessPolicy({
     identityStatus: identity.status, identityType: identity.type, identityEmail: identity.email,
