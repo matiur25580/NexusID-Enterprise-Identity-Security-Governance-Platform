@@ -191,6 +191,7 @@ model Identity {
   lifecycleRequests LifecycleRequest[]
   scimGroupMemberships ScimGroupMember[]
 
+  @@unique([id, organizationId])
   @@unique([organizationId, externalId])
   @@unique([organizationId, userName])
   @@index([organizationId, type, status])
@@ -209,6 +210,7 @@ model Application {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   entitlements   Entitlement[]
 
+  @@unique([id, organizationId])
   @@unique([organizationId, slug])
   @@index([organizationId, name])
 }
@@ -231,6 +233,7 @@ model Entitlement {
   accessGrants   AccessGrant[]
   scimGroupMappings ScimGroupEntitlementMapping[]
 
+  @@unique([id, organizationId])
   @@unique([applicationId, key])
   @@index([organizationId, enabled, riskLevel])
   @@index([organizationId, applicationId])
@@ -256,6 +259,7 @@ model AccessRequest {
   decisionUser     User?               @relation("AccessDecider", fields: [decisionUserId], references: [id], onDelete: SetNull)
   grant            AccessGrant?
 
+  @@unique([id, organizationId])
   @@index([organizationId, status, createdAt])
   @@index([identityId, entitlementId, status])
   @@index([requesterUserId, createdAt])
@@ -455,6 +459,7 @@ model ScimConnector {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy      User         @relation("ScimConnectorCreator", fields: [createdById], references: [id], onDelete: Restrict)
   groups         ScimGroup[]
+  @@unique([id, organizationId])
   @@index([organizationId, enabled, createdAt])
 }
 
@@ -470,6 +475,7 @@ model ScimGroup {
   connector      ScimConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
   members        ScimGroupMember[]
   mappings       ScimGroupEntitlementMapping[]
+  @@unique([id, organizationId])
   @@unique([connectorId, externalId])
   @@index([organizationId, displayName])
 }
