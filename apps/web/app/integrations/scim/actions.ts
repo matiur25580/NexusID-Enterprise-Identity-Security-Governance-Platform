@@ -55,7 +55,8 @@ export async function removeScimGroupMapping(mappingId:string):Promise<void>{
  await withTenantContext(current.organizationId, async tx=>{
   const mapping=await tx.scimGroupEntitlementMapping.findFirst({where:{id:mappingId,organizationId:current.organizationId},select:{id:true,groupId:true,entitlementId:true}});
   if(!mapping)throw new Error("Mapping not found in this workspace.");
-  await tx.scimGroupEntitlementMapping.delete({where:{id:mapping.id}});
+  const removed=await tx.scimGroupEntitlementMapping.deleteMany({where:{id:mapping.id,organizationId:current.organizationId}});
+  if(removed.count!==1)throw new Error("Mapping was not found in this workspace.");
   await tx.auditEvent.create({data:{organizationId:current.organizationId,actorUserId:current.userId,action:"scim.group.entitlement_mapping.removed",targetType:"scim_group_entitlement_mapping",targetId:mapping.id,outcome:"SUCCESS",metadata:{groupId:mapping.groupId,entitlementId:mapping.entitlementId},reason:"Mapping removed. Existing pending requests and active grants are not automatically changed."}});
  });
  revalidatePath("/integrations/scim");
