@@ -34,7 +34,7 @@ function SubmitButton() {
 function CreateIdentityForm({ onClose }: { onClose: () => void }) {
   const [state, action] = useActionState(createIdentity, initialState);
   return (
-    <form action={async (formData) => { const result = await action(formData); if (!result?.error) onClose(); }} className="identity-form">
+    <form action={action} className="identity-form">
       <div className="identity-form-grid">
         <label>Display name<input name="displayName" required minLength={2} maxLength={120} placeholder="e.g. Aisha Rahman" /></label>
         <label>Email address<input name="email" type="email" maxLength={254} placeholder="aisha@company.com" /></label>
