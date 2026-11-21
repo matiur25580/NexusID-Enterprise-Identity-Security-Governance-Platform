@@ -31,6 +31,36 @@ test("database-backed tenant isolation and membership authorization", { skip: !e
     await prisma.membership.create({ data: { organizationId: orgB.id, userId: userB.id, role: "MEMBER" } });
     const identityA = await prisma.identity.create({ data: { organizationId: orgA.id, displayName: "Tenant A identity", type: "HUMAN", status: "ACTIVE" } });
     const identityB = await prisma.identity.create({ data: { organizationId: orgB.id, displayName: "Tenant B identity", type: "HUMAN", status: "ACTIVE" } });
+    const applicationA = await prisma.application.create({ data: { organizationId: orgA.id, name: "Tenant A app", slug: "tenant-a-" + suffix } });
+    const applicationB = await prisma.application.create({ data: { organizationId: orgB.id, name: "Tenant B app", slug: "tenant-b-" + suffix } });
+    const entitlementA = await prisma.entitlement.create({
+      data: { organizationId: orgA.id, applicationId: applicationA.id, key: "reader", name: "Tenant A reader" },
+    });
+    const entitlementB = await prisma.entitlement.create({
+      data: { organizationId: orgB.id, applicationId: applicationB.id, key: "reader", name: "Tenant B reader" },
+    });
+
+    await assert.rejects(
+      prisma.entitlement.create({
+        data: { organizationId: orgB.id, applicationId: applicationA.id, key: "cross-tenant", name: "Invalid cross-tenant entitlement" },
+      }),
+      (error) => error?.code === "P2003",
+      "PostgreSQL must reject an entitlement whose application belongs to another organization.",
+    );
+    await assert.rejects(
+      prisma.accessRequest.create({
+        data: {
+          organizationId: orgB.id,
+          identityId: identityA.id,
+          entitlementId: entitlementB.id,
+          requesterUserId: userB.id,
+          requestReason: "Cross-tenant integrity regression test",
+        },
+      }),
+      (error) => error?.code === "P2003",
+      "PostgreSQL must reject an access request whose identity belongs to another organization.",
+    );
+    assert.ok(entitlementA.id);
 
     const visibleToA = await prisma.identity.findMany({ where: { organizationId: orgA.id } });
     assert.deepEqual(visibleToA.map((item) => item.id), [identityA.id]);
