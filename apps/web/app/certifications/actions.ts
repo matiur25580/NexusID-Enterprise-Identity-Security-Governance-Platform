@@ -91,7 +91,7 @@ export async function decideCertificationItem(formData: FormData): Promise<void>
 
   const item = await withTenantContext(actor.organizationId, (tx) => tx.certificationItem.findFirst({
     where: { id: parsed.data.itemId, campaign: { organizationId: actor.organizationId, status: "IN_PROGRESS" } },
-    include: { campaign: true, grant: { include: { identity: true, entitlement: { include: { application: true } } } },
+    include: { campaign: true, grant: { include: { identity: true, entitlement: { include: { application: true } } } } },
   }));
   if (!item) throw new Error("Certification item not found or its campaign is no longer active.");
   if (item.status !== "PENDING") throw new Error("This item has already been reviewed.");
