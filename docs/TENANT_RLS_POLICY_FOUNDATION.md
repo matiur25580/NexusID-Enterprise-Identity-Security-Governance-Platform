@@ -6,6 +6,12 @@ The migration at `apps/web/prisma/migrations/20261121180000_prepare_tenant_rls_p
 
 This is intentional. Current server actions and route handlers use the shared Prisma client directly, and do not consistently establish a transaction-local tenant context. Enabling RLS before that request boundary is implemented would cause legitimate application reads and writes to fail, or encourage unsafe bypasses. The policy foundation is therefore inert until the runtime context rollout is complete.
 
+## Runtime context progress
+
+A reusable `withTenantContext(organizationId, work)` helper now opens a Prisma interactive transaction and sets `app.current_organization_id` with transaction-local `set_config(..., true)`. The identity server actions use it for identity creation, status changes, and risk snapshot reads/writes.
+
+This is an initial vertical slice, not complete application coverage. Governance, policy, certification, lifecycle, SCIM API routes, page loaders, and scheduled jobs still require conversion and tests before RLS can be activated. Do not enable RLS on a shared or production database based only on this helper's presence.
+
 ## Policy contract
 
 - Tenant context is transaction-local: `set_config('app.current_organization_id', <organization-id>, true)`.
