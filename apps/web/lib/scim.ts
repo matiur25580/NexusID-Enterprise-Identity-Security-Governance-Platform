@@ -11,10 +11,14 @@ export async function authenticateScim(request:Request){
  const match=header.match(/^Bearer\s+(\S+)$/i);
  if(!match||match[1].length>256)return null;
  const tokenHash=createHash("sha256").update(match[1]).digest("hex");
- const connector=await prisma.scimConnector.findUnique({where:{tokenHash},select:{id:true,organizationId:true,enabled:true,createdById:true}});
- if(!connector?.enabled)return null;
- await withTenantContext(connector.organizationId, tx => tx.scimConnector.update({where:{id:connector.id,organizationId:connector.organizationId},data:{lastUsedAt:new Date()}}));
- return connector;
+ const tokenRecord=await prisma.scimConnector.findUnique({where:{tokenHash},select:{id:true,organizationId:true}});
+ if(!tokenRecord)return null;
+ return withTenantContext(tokenRecord.organizationId, async tx=>{
+  const connector=await tx.scimConnector.findFirst({where:{id:tokenRecord.id,organizationId:tokenRecord.organizationId,enabled:true},select:{id:true,organizationId:true,enabled:true,createdById:true}});
+  if(!connector)return null;
+  await tx.scimConnector.update({where:{id:connector.id,organizationId:connector.organizationId},data:{lastUsedAt:new Date()}});
+  return connector;
+ });
 }
 export function createScimToken(){return "nxs_scim_"+randomBytes(32).toString("base64url");}
 export function hashScimToken(token:string){return createHash("sha256").update(token).digest("hex");}
