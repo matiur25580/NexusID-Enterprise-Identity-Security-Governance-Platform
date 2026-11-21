@@ -457,3 +457,44 @@ model ScimConnector {
   groups         ScimGroup[]
   @@index([organizationId, enabled, createdAt])
 }
+
+model ScimGroup {
+  id             String       @id @default(cuid())
+  organizationId String
+  connectorId    String
+  externalId     String
+  displayName    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connector      ScimConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  members        ScimGroupMember[]
+  mappings       ScimGroupEntitlementMapping[]
+  @@unique([connectorId, externalId])
+  @@index([organizationId, displayName])
+}
+
+model ScimGroupMember {
+  id         String   @id @default(cuid())
+  groupId    String
+  identityId String
+  createdAt  DateTime @default(now())
+  group      ScimGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  identity   Identity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  @@unique([groupId, identityId])
+  @@index([identityId])
+}
+
+model ScimGroupEntitlementMapping {
+  id             String       @id @default(cuid())
+  organizationId String
+  groupId        String
+  entitlementId  String
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  group          ScimGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  entitlement    Entitlement  @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  @@unique([groupId, entitlementId])
+  @@index([organizationId, enabled])
+}
