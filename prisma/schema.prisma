@@ -57,6 +57,8 @@ model User {
   updatedAt    DateTime     @updatedAt
   memberships  Membership[]
   auditEvents  AuditEvent[] @relation("AuditActor")
+  accounts     Account[]
+  sessions     Session[]
 }
 
 model Membership {
