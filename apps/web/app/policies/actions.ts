@@ -3,7 +3,7 @@
 import { MembershipRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withTenantContext } from "@/lib/prisma";
 import { requireOrganizationRole } from "@/lib/authorization";
 import { revalidatePath } from "next/cache";
 import { evaluateAccessPolicy, type ConfigurablePolicyRule } from "@/lib/policy-engine";
@@ -46,7 +46,7 @@ export async function createPolicyRule(_prev: PolicyActionState, formData: FormD
   if (!parsed.success) return { error: "Check the policy fields. Use a supported condition and valid priority." };
   const data = parsed.data;
   try {
-    await prisma.$transaction(async (tx) => {
+    await withTenantContext(actor.organizationId, async (tx) => {
       const rule = await tx.policyRule.create({ data: {
         organizationId: actor.organizationId, key: data.key.toUpperCase(), name: data.name,
         description: data.description || null, effect: data.effect, field: data.field,
@@ -79,7 +79,7 @@ export async function updatePolicyRule(_prev: PolicyActionState, formData: FormD
   if (!existing) return { error: "Policy rule not found in this workspace." };
   if (existing.enabled) return { error: "Disable the policy before editing it. This prevents silent changes to active enforcement." };
   try {
-    await prisma.$transaction(async (tx) => {
+    await withTenantContext(actor.organizationId, async (tx) => {
       const changed = await tx.policyRule.updateMany({ where: {
         id: existing.id, organizationId: actor.organizationId, version: existing.version, enabled: false,
       }, data: {
@@ -119,7 +119,7 @@ export async function setPolicyRuleEnabled(formData: FormData): Promise<void> {
   if (enabled && !hasFreshPolicySimulation(rule)) {
     throw new Error("Run a policy simulation after the latest edit before enabling this rule.");
   }
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const changed = await tx.policyRule.updateMany({ where: {
       id: rule.id, organizationId: actor.organizationId, version: rule.version, enabled: rule.enabled,
       ...(enabled ? { validatedVersion: rule.version } : {}),
@@ -168,7 +168,7 @@ export async function simulateAccessPolicy(_prev: PolicySimulationState, formDat
     entitlementEnabled: entitlement.enabled, riskLevel: entitlement.riskLevel, privileged: entitlement.privileged,
     hasActiveGrant: Boolean(activeGrant), hasPendingRequest: Boolean(pendingRequest),
   }, candidates);
-  await prisma.$transaction(async (tx) => {
+  await withTenantContext(actor.organizationId, async (tx) => {
     const simulatedAt = new Date();
     for (const rule of policyRecords) {
       await tx.policyRule.update({ where: { id: rule.id }, data: { lastSimulatedAt: simulatedAt, validatedVersion: rule.version } });
