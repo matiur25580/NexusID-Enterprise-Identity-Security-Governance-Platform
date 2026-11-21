@@ -69,12 +69,14 @@ export function evaluateAccessPolicy(input: AccessPolicyInput, customRules: Conf
 
   const ordered = [...customRules].filter((rule) => rule.enabled).sort((a, b) => a.priority - b.priority || a.key.localeCompare(b.key));
   for (const rule of ordered) {
+    if (rule.effect !== "DENY" && rule.effect !== "REVIEW" && rule.effect !== "ALLOW") continue;
+    const effect = rule.effect as PolicyOutcome;
     if (matches(fieldValue(input, rule.field), rule.operator, rule.value)) {
       add({
         code: "CUSTOM_" + rule.key,
         title: rule.name,
-        severity: rule.effect === "DENY" ? "CRITICAL" : rule.effect === "REVIEW" ? "WARNING" : "INFO",
-        outcome: rule.effect,
+        severity: effect === "DENY" ? "CRITICAL" : effect === "REVIEW" ? "WARNING" : "INFO",
+        outcome: effect,
         explanation: rule.description || `Matched configurable rule ${rule.key}.`,
         source: "CUSTOM",
       });
