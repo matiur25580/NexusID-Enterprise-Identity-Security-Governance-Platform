@@ -212,14 +212,19 @@ export async function decideAccessRequest(formData: FormData): Promise<void> {
       where: { organizationId: actor.organizationId, identityId: request.identityId, entitlementId: request.entitlementId, status: "ACTIVE" },
       select: { id: true },
     });
+    const activePolicies = await prisma.policyRule.findMany({
+      where: { organizationId: actor.organizationId, enabled: true },
+      orderBy: [{ priority: "asc" }, { key: "asc" }],
+    });
     const evaluation = evaluateAccessPolicy({
       identityStatus: request.identity.status,
       identityType: request.identity.type,
+      identityEmail: request.identity.email,
       entitlementEnabled: request.entitlement.enabled,
       riskLevel: request.entitlement.riskLevel,
       privileged: request.entitlement.privileged,
       hasActiveGrant: Boolean(activeGrant),
-    });
+    }, activePolicies);
     if (evaluation.outcome === "DENY") throw new Error(evaluation.summary + " " + evaluation.rules.map((rule) => rule.title).join("; "));
   }
 
