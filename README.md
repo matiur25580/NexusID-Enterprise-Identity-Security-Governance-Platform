@@ -13,7 +13,7 @@
 
 NexusID is a multi-tenant identity security and access-governance platform prototype. It brings workforce identities, service accounts, workloads and AI-agent identities into a common governance workflow: discover identities, catalogue entitlements, request and approve access, certify existing grants, evaluate policy and explain identity risk.
 
-> **Honest project status:** This is an actively developed portfolio project, not a production-certified IAM/IGA product. Authentication, tenant-aware application workflows, policy evaluation, access governance, certifications and explainable risk features are implemented. The command-center overview still contains illustrative metrics and activity data. Production identity-provider provisioning, SCIM connectors, SAML federation, privileged session brokering and compliance certification are not claimed.
+> **Honest project status:** This is an actively developed portfolio project, not a production-certified IAM/IGA product. Authentication, tenant-aware application workflows, policy evaluation, access governance, certifications and explainable risk features are implemented. The command-center overview still contains illustrative metrics and activity data. Inbound SCIM 2.0 Users and Groups provisioning is implemented with approval-gated entitlement mappings; outbound provisioning, SAML federation, privileged session brokering and compliance certification are not claimed.
 
 ## Contents
 
@@ -335,13 +335,13 @@ Configure these GitHub repository Actions secrets:
 
 If secrets are missing, the workflow warns and safely skips. The application must be deployed and reachable for scheduled snapshots to run. External email/chat/SIEM alert delivery is not included.
 
-## SCIM 2.0 provisioning (initial Users scope)
+## SCIM 2.0 provisioning (inbound Users and Groups)
 
 The /integrations/scim workspace creates organization-bound SCIM bearer connectors. Each generated token is displayed once; only its SHA-256 hash is stored. Configure the source URL as https://YOUR_HOST/api/scim/v2 and use the token as an HTTP Bearer credential.
 
-Implemented endpoints: GET/POST /Users and GET/PUT/PATCH/DELETE /Users/{id}. Exact userName and externalId equality filters and startIndex/count pagination are supported. Deactivation disables the identity and revokes active NexusID grants transactionally. SCIM never creates access grants or bypasses NexusID policy/approval workflows.
+Implemented endpoints: GET/POST /Users and /Groups, plus GET/PUT/PATCH/DELETE /Users/{id} and /Groups/{id}. User collection filters support exact userName and externalId equality; both collections support bounded startIndex/count pagination. Group membership accepts only identities provisioned by the same connector. Deactivation disables identities and revokes active NexusID grants transactionally. Group-to-entitlement mappings create policy-evaluated PENDING access requests only; human approval remains mandatory.
 
-This is an inbound Users service-provider API, not a complete SCIM suite. Groups, outbound provisioning, background reconciliation, retries, rate limiting and production connector health monitoring remain future work. Use TLS, store the token in a secret manager, rotate credentials and put an API gateway/WAF with rate limits in front of the endpoint.
+This is an inbound Users/Groups service-provider implementation, not a complete SCIM suite. Outbound provisioning, background reconciliation, retries, rate limiting and production connector health monitoring remain future work. Use TLS, store the token in a secret manager, rotate credentials and put an API gateway/WAF with rate limits in front of the endpoint.
 
 ## Identity lifecycle management
 
@@ -396,7 +396,7 @@ This is an internal governance workflow, not an external provisioning connector.
 - Risk weights are initial heuristics and require security-stakeholder calibration.
 - The scheduled workflow requires a deployed, reachable app and configured GitHub secrets; CI does not verify deployment secrets.
 - Alerts are persisted and shown in the directory; notification delivery and acknowledgement are not implemented.
-- No external directory sync, account provisioning or deprovisioning is implemented.
+- SCIM inbound directory synchronization is implemented; outbound account provisioning, downstream deprovisioning and reconciliation are not implemented.
 - No SOC 2, ISO 27001 or other compliance certification is claimed.
 - Tenant query scoping needs PostgreSQL RLS and further adversarial testing before production use.
 
