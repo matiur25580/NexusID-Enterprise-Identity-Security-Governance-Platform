@@ -13,6 +13,16 @@ A reusable `withTenantContext(organizationId, work)` helper now opens a Prisma i
 This remains a partial rollout, not complete application coverage. Several tenant-scoped read queries in these flows still rely on explicit organization filters rather than a transaction-local RLS context. Other page loaders, route handlers, scheduled/background jobs, and all remaining Prisma access paths still require conversion and tests before RLS can be activated. SCIM endpoints also need adversarial authenticated integration coverage under a restricted runtime role. Do not enable RLS on a shared or production database based only on this helper's presence.
 
 
+## Workspace creation bootstrap
+
+The onboarding flow creates the Organization row before a tenant ID exists, then sets
+`app.current_organization_id` transaction-locally from that newly created server-side
+organization ID before writing the initial Membership and tenant-owned AuditEvent.
+Organization and Membership remain outside tenant RLS; the AuditEvent write therefore
+runs with the same transaction-local context required by the protected tenant tables.
+The CI RLS integration test exercises AuditEvent reads and writes under a restricted
+`NOBYPASSRLS` role, including rejection of a cross-tenant audit insert.
+
 ## SCIM token lookup exception
 
 SCIM bearer authentication must identify the tenant before a tenant transaction can be established. The current implementation performs a narrow token-hash lookup on `ScimConnector` to resolve only the connector ID and organization ID, then re-reads and validates the enabled connector and updates `lastUsedAt` inside `withTenantContext`. This initial token-hash lookup is a deliberate bootstrap exception to tenant-context coverage. It is **not compatible with activating RLS on `ScimConnector` as-is**: before activation, move token-hash resolution to a dedicated global authentication registry excluded from tenant RLS, or a carefully reviewed least-privilege `SECURITY DEFINER` lookup function with fixed `search_path` and tightly constrained output. Never expose connector metadata from the bootstrap lookup.
