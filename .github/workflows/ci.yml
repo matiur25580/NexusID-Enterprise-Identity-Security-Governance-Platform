@@ -60,7 +60,7 @@ jobs:
         run: psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121170000_add_tenant_relational_integrity/migration.sql
 
       - name: Prepare tenant RLS policies (not activated)
-        run: psql "${DATABASE_URL%%?*}" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121180000_prepare_tenant_rls_policies/migration.sql
+        run: psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -f apps/web/prisma/migrations/20261121180000_prepare_tenant_rls_policies/migration.sql
 
       - name: Policy regression tests
         run: pnpm test:policy
