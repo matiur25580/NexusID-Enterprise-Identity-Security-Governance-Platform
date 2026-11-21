@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { authenticateScim, scimError, toScimUser } from "@/lib/scim.mjs";
+import { authenticateScim, scimError, toScimUser } from "@/lib/scim";
 import { normalizeScimUser, applyScimPatch } from "@/lib/scim-core.mjs";
 import { NextResponse } from "next/server";
 export const runtime="nodejs";

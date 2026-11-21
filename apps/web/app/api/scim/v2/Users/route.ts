@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { authenticateScim, scimError, toScimUser, SCIM_LIST_SCHEMA } from "@/lib/scim.mjs";
+import { authenticateScim, scimError, toScimUser, SCIM_LIST_SCHEMA } from "@/lib/scim";
 import { normalizeScimUser, parseScimFilter } from "@/lib/scim-core.mjs";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
