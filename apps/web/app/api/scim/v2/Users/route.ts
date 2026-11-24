@@ -4,6 +4,7 @@ import { normalizeScimUser, parseScimFilter } from "@/lib/scim-core.mjs";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 export const runtime="nodejs";
+// Authenticate the provisioning connector and restrict SCIM user discovery to its organization and source.
 export async function GET(request:Request){
  const connector=await authenticateScim(request);if(!connector)return scimError(401,"A valid SCIM bearer token is required.","invalidCredentials");
  const url=new URL(request.url);let filter;
