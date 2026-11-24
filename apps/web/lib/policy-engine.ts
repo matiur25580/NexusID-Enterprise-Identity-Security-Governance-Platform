@@ -54,6 +54,7 @@ function fieldValue(input: AccessPolicyInput, field: string): string {
 }
 
 /** Pure, deterministic evaluator shared by simulation, request and approval flows. */
+// Evaluate baseline safeguards and configurable rules through one shared, deterministic policy path.
 export function evaluateAccessPolicy(input: AccessPolicyInput, customRules: ConfigurablePolicyRule[] = []): AccessPolicyResult {
   const rules: PolicyRuleResult[] = [];
   const add = (rule: PolicyRuleResult) => rules.push(rule);
