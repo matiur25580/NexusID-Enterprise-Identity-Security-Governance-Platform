@@ -13,6 +13,7 @@ export async function GET(request:Request){
  const [total,groups]=await withTenantContext(connector.organizationId, tx=>Promise.all([tx.scimGroup.count({where}),tx.scimGroup.findMany({where,include:{members:{where:{identity:{organizationId:connector.organizationId,source:"SCIM:"+connector.id}},select:{identityId:true}}},orderBy:{createdAt:"desc"},skip:startIndex-1,take:count})]));
  return NextResponse.json({schemas:["urn:ietf:params:scim:api:messages:2.0:ListResponse"],totalResults:total,startIndex,itemsPerPage:groups.length,Resources:groups.map(g=>({schemas:["urn:ietf:params:scim:schemas:core:2.0:Group"],id:g.id,externalId:g.externalId,displayName:g.displayName,members:g.members.map(m=>({value:m.identityId,type:"User"})),meta:{resourceType:"Group",created:g.createdAt.toISOString(),lastModified:g.updatedAt.toISOString()}}))},{headers:{"Content-Type":"application/scim+json"}});
 }
+// Accept group membership only for identities provisioned by this same tenant connector.
 export async function POST(request:Request){
  const connector=await authenticateScim(request);if(!connector)return scimError(401,"A valid SCIM bearer token is required.","invalidCredentials");
  let input;try{input=normalizeScimGroup(await request.json());}catch(e){return scimError(400,e instanceof Error?e.message:"Invalid SCIM Group.");}
