@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
+// Resolve the authenticated user's organization membership for tenant-aware page operations.
 export async function getTenantContext() {
   const session = await auth();
 
