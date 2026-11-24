@@ -6,6 +6,7 @@ import { calculateIdentityRisk } from "@/lib/identity-risk";
 import { detectRiskEscalations } from "@/lib/risk-alerts";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
+// Protect the scheduled risk-snapshot job with a sufficiently strong, constant-time checked secret.
 function authorized(request:NextRequest):boolean{
  const expected=process.env.NEXUSID_RISK_SNAPSHOT_SECRET;
  const supplied=request.headers.get("authorization")?.replace(/^Bearer\s+/i,"")??"";
