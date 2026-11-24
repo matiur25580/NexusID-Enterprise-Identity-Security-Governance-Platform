@@ -4,6 +4,7 @@ export type IdentityRiskFactor = { code: string; label: string; points: number; 
 export type IdentityRiskResult = { score: number; level: "LOW" | "MODERATE" | "HIGH" | "CRITICAL"; factors: IdentityRiskFactor[]; methodology: "NEXUSID_DETERMINISTIC_V1" };
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Transparent heuristic score, not a probability or ML prediction. Missing last-seen data is neutral. */
+// Produce an explainable deterministic score; this heuristic is not a probability or ML prediction.
 export function calculateIdentityRisk(input: IdentityRiskInput, asOf: Date = new Date()): IdentityRiskResult {
   const factors: IdentityRiskFactor[] = [];
   const add = (code: string, label: string, points: number, explanation: string) => { if (points > 0) factors.push({ code, label, points, explanation }); };
