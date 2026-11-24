@@ -11,6 +11,7 @@ export class AuthorizationError extends Error {
   }
 }
 
+// Resolve the signed-in user's live membership before accepting an organization-scoped role.
 export async function requireOrganizationRole(
   organizationId: string,
   allowedRoles: MembershipRole[],
